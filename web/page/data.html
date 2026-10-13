@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>数据中心 · 掌柜智库</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: "Microsoft YaHei", "PingFang SC", sans-serif; background: #f0f2f5; padding: 22px; }
+    .head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+    .head h2 { color: #1a2a4a; font-size: 18px; }
+    .btn { border: none; cursor: pointer; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; background: #0a84ff; color: #fff; }
+    .btn:hover { background: #0069d9; }
+    .row { display: flex; gap: 14px; margin-bottom: 16px; flex-wrap: wrap; }
+    .card { background: #fff; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,.06); padding: 16px; }
+    .col { flex: 1; min-width: 320px; }
+    .card h3 { font-size: 14px; color: #1a2a4a; margin-bottom: 10px; }
+    .card h3 .sub { font-size: 11px; color: #999; font-weight: 400; margin-left: 6px; }
+    ol.hot { list-style: none; counter-reset: hot; }
+    ol.hot li {
+      counter-increment: hot; display: flex; align-items: center; gap: 10px;
+      padding: 8px 6px; border-bottom: 1px dashed #f0f0f0; font-size: 13px; color: #333;
+    }
+    ol.hot li::before {
+      content: counter(hot);
+      flex: 0 0 22px; height: 22px; border-radius: 6px; background: #eef3ff; color: #2b6cb0;
+      display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700;
+    }
+    ol.hot li:nth-child(-n+3)::before { background: #ffe9c8; color: #b26a00; }
+    ol.hot .cnt { margin-left: auto; font-size: 12px; color: #0a7a43; font-weight: 600; white-space: nowrap; }
+    ol.hot .q { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { background: #f7f8fa; color: #555; text-align: left; padding: 9px 12px; font-weight: 600; }
+    td { padding: 9px 12px; border-top: 1px solid #f0f0f0; color: #333; }
+    tr:hover td { background: #f8fbff; }
+    .empty { text-align: center; padding: 30px; color: #999; }
+    .gap-badge { display: inline-block; background: #ffecec; color: #c0392b; padding: 2px 10px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+    .meta { color: #888; font-size: 12px; margin-top: 8px; }
+    .kpi { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
+    .kpi .item { flex: 1; min-width: 110px; background: #f7f9fc; border-radius: 10px; padding: 10px; text-align: center; }
+    .kpi .num { font-size: 20px; font-weight: 700; color: #1a2a4a; }
+    .kpi .lbl { font-size: 11px; color: #888; margin-top: 2px; }
+  </style>
+</head>
+<body>
+  <div class="head">
+    <h2>📈 数据中心</h2>
+    <button class="btn" onclick="load()">↻ 刷新</button>
+  </div>
+
+  <div class="row">
+    <div class="card col">
+      <h3>🔥 热门问题榜<span class="sub">全站提问 TOP10</span></h3>
+      <ol class="hot" id="hotList"><li class="empty" style="display:list-item">加载中…</li></ol>
+    </div>
+    <div class="card col">
+      <h3>🕳️ 知识缺口提醒<span class="sub">检索无来源的问答 = 库里缺这些资料</span></h3>
+      <div id="gapBox"><div class="empty">加载中…</div></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:16px">
+    <h3>⚙️ LLM 用量统计<span class="sub">近 14 天 · 全站</span></h3>
+    <div class="kpi" id="kpiBox"></div>
+    <canvas id="usageChart" height="90"></canvas>
+  </div>
+
+  <div class="card">
+    <h3>🕳️ 缺口明细</h3>
+    <table>
+      <thead><tr><th style="width:45%">问题（库里没查到来源）</th><th>兜底回答摘要</th><th>时间</th></tr></thead>
+      <tbody id="gapTbody"><tr><td colspan="3" class="empty">加载中…</td></tr></tbody>
+    </table>
+  </div>
+  <p class="meta">知识缺口 = 问答时检索没有命中任何来源（answer 无引用），说明知识库缺少该问题的资料，建议补充导入。</p>
+
+<script>
+const $ = id => document.getElementById(id);
+let usageChart = null;
+function fmtTime(ts) {
+  if (!ts) return '—';
+  const d = new Date(ts * 1000);
+  return isNaN(d.getTime()) ? '—' : d.toLocaleString('zh-CN', {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'});
+}
+function escapeHtml(t) { return String(t).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+async function load() {
+  const tk = localStorage.getItem('kb_token') || '';
+  const opt = { headers: { Authorization: 'Bearer ' + tk, 'X-Auth-Token': tk } };
+  try {
+    const [rh, rg, ru] = await Promise.all([
+      fetch('/api/stats/hot-questions', opt),
+      fetch('/api/stats/gaps', opt),
+      fetch('/api/stats/usage', opt)
+    ]);
+    const hot = (await rh.json()).items || [];
+    const gaps = (await rg.json()).items || [];
+    const usage = (await ru.json());
+
+    // 热门问题
+    $('hotList').innerHTML = hot.length
+      ? hot.map(h => `<li><span class="q" title="${escapeHtml(h.question)}">${escapeHtml(h.question)}</span><span class="cnt">×${h.count}</span></li>`).join('')
+      : '<li class="empty" style="display:list-item">还没有提问记录，去问答页提几个问题吧</li>';
+
+    // 用量 KPI + 柱状图
+    $('kpiBox').innerHTML = `
+      <div class="item"><div class="num">${usage.total ?? 0}</div><div class="lbl">14天调用总数</div></div>
+      <div class="item"><div class="num">${usage.errors ?? 0}</div><div class="lbl">失败次数</div></div>
+      <div class="item"><div class="num">${Object.keys(usage.kinds || {}).length}</div><div class="lbl">调用类型数</div></div>`;
+    const daily = usage.daily || [];
+    if (usageChart) usageChart.destroy();
+    usageChart = new Chart($('usageChart'), {
+      type: 'bar',
+      data: {
+        labels: daily.map(d => d.day),
+        datasets: [
+          { label: '调用次数', data: daily.map(d => d.total), backgroundColor: 'rgba(10,132,255,.65)', borderRadius: 6 },
+          { label: '失败', data: daily.map(d => d.errors), backgroundColor: 'rgba(229,72,77,.65)', borderRadius: 6 }
+        ]
+      },
+      options: { scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
+    });
+
+    // 缺口明细表 + 顶部提醒
+    $('gapTbody').innerHTML = gaps.length
+      ? gaps.map(g => `<tr><td>${escapeHtml(g.question)}</td><td style="color:#98a3b0">${escapeHtml(g.answer_head || '')}…</td><td>${fmtTime(g.ts)}</td></tr>`).join('')
+      : '<tr><td colspan="3" class="empty">太棒了，暂无知识缺口 🎉</td></tr>';
+    $('gapBox').innerHTML = gaps.length
+      ? `<span class="gap-badge">⚠ 发现 ${gaps.length} 个知识缺口</span>
+         <div style="font-size:13px;color:#333;margin-top:8px">以下问题检索时没有命中任何来源，建议补充相关文档：</div>
+         <ol class="hot" style="margin-top:6px">${gaps.slice(0,5).map(g => `<li><span class="q">${escapeHtml(g.question)}</span></li>`).join('')}</ol>`
+      : '<div style="font-size:13px;color:#0a7a43">✅ 暂无知识缺口，知识库覆盖良好</div>';
+  } catch (e) {
+    $('hotList').innerHTML = '<li class="empty" style="display:list-item">网络异常</li>';
+  }
+}
+
+load();
+</script>
+</body>
+</html>

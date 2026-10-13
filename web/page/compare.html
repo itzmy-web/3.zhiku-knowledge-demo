@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>对比实验室 · 掌柜智库</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: "Microsoft YaHei", "PingFang SC", sans-serif; background: #f0f2f5; padding: 22px; }
+    .head { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
+    .head h2 { color: #1a2a4a; font-size: 18px; }
+    .modes { display: flex; gap: 6px; }
+    .modes button { border: 1px solid #dfe6ef; background: #fff; padding: 7px 16px; border-radius: 8px; cursor: pointer; font-size: 13px; color: #555; }
+    .modes button.active { background: #0a84ff; color: #fff; border-color: #0a84ff; font-weight: 600; }
+    .ask { background: #fff; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,.06); padding: 16px; margin-bottom: 16px; }
+    .ask .cfg { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; font-size: 13px; color: #333; }
+    .ask select, .ask input[type=number] { padding: 7px 10px; border: 1px solid #dfe6ef; border-radius: 8px; font-size: 13px; }
+    .ask input[type=text] { flex: 1; min-width: 260px; padding: 10px 12px; border: 1px solid #dfe6ef; border-radius: 8px; font-size: 14px; }
+    .ask .btn { border: none; cursor: pointer; padding: 10px 22px; border-radius: 8px; font-size: 14px; font-weight: 600; background: #0a84ff; color: #fff; }
+    .ask .btn:disabled { opacity: .6; cursor: not-allowed; }
+    .ask .lbl { color: #888; font-size: 12px; }
+    .ab { display: flex; gap: 14px; flex-wrap: wrap; }
+    .side { flex: 1; min-width: 320px; background: #fff; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,.06); padding: 16px; border-top: 4px solid #0a84ff; }
+    .side.b { border-top-color: #0a7a43; }
+    .side h3 { font-size: 14px; color: #1a2a4a; margin-bottom: 8px; }
+    .side .cfg-desc { font-size: 12px; color: #888; margin-bottom: 8px; }
+    .side .ans { white-space: pre-wrap; line-height: 1.7; font-size: 13px; color: #333; }
+    .side .meta { margin-top: 10px; font-size: 12px; color: #0a7a43; }
+    .placeholder { color: #999; text-align: center; padding: 60px 0; font-size: 13px; }
+    .spin { display: inline-block; width: 14px; height: 14px; border: 2px solid #cfe3ff; border-top-color: #0a84ff; border-radius: 50%; animation: sp 0.8s linear infinite; vertical-align: -2px; margin-right: 6px; }
+    @keyframes sp { to { transform: rotate(360deg); } }
+    .meta { color: #888; font-size: 12px; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <div class="head">
+    <h2>⚖️ 对比实验室</h2>
+    <div class="modes">
+      <button id="modeDoc" class="active" onclick="switchMode('doc')">📄 文档对比</button>
+      <button id="modeAb" onclick="switchMode('ab')">⚖️ 参数 A/B</button>
+    </div>
+  </div>
+
+  <div class="ask">
+    <div class="cfg" id="docCfg">
+      <span class="lbl">文档A</span>
+      <select id="docA" style="max-width:220px"><option value="">加载中…</option></select>
+      <span class="lbl">文档B</span>
+      <select id="docB" style="max-width:220px"><option value="">加载中…</option></select>
+      <span class="lbl">各取条数</span>
+      <input type="number" id="docTopK" min="1" max="8" value="4" style="width:64px">
+    </div>
+    <div class="cfg" id="abCfg" style="display:none">
+      <span class="lbl">A组（默认参数：K=60/top3/全开）</span>
+      <span class="lbl" style="margin-left:14px">B组：</span>
+      <span class="lbl">RRF K</span><input type="number" id="abRrfK" min="1" max="200" value="5">
+      <span class="lbl">topK</span><input type="number" id="abTopK" min="1" max="10" value="6">
+      <label class="lbl"><input type="checkbox" id="abRerank"> 关闭rerank</label>
+      <label class="lbl"><input type="checkbox" id="abWeb" checked> 联网</label>
+    </div>
+    <div class="cfg">
+      <input type="text" id="question" placeholder="输入同一个问题，对比两边答案的差异（Enter 发送）">
+      <button class="btn" id="goBtn" onclick="run()">开跑</button>
+    </div>
+  </div>
+
+  <div class="ab">
+    <div class="side">
+      <h3>🅰 A 边</h3>
+      <div class="cfg-desc" id="descA">—</div>
+      <div class="ans" id="ansA"><div class="placeholder">等待提问…</div></div>
+      <div class="meta" id="metaA"></div>
+    </div>
+    <div class="side b">
+      <h3>🅱 B 边</h3>
+      <div class="cfg-desc" id="descB">—</div>
+      <div class="ans" id="ansB"><div class="placeholder">等待提问…</div></div>
+      <div class="meta" id="metaB"></div>
+    </div>
+  </div>
+  <p class="meta">📄 文档对比：同一问题分别只基于两个文档独立检索+回答，用于比对不同资料的内容差异。<br>⚖️ 参数 A/B：同一问题用两组检索参数各跑一次完整 RAG，用于调参（RRF K / topK / rerank / 联网）。</p>
+
+<script>
+const $ = id => document.getElementById(id);
+let mode = 'doc';
+
+function switchMode(m) {
+  mode = m;
+  $('modeDoc').classList.toggle('active', m === 'doc');
+  $('modeAb').classList.toggle('active', m === 'ab');
+  $('docCfg').style.display = m === 'doc' ? 'flex' : 'none';
+  $('abCfg').style.display = m === 'ab' ? 'flex' : 'none';
+}
+
+function escapeHtml(t) { return String(t).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+async function loadDocs() {
+  const tk = localStorage.getItem('kb_token') || '';
+  try {
+    const r = await fetch('/api/docs/list', { headers: { Authorization: 'Bearer ' + tk, 'X-Auth-Token': tk } });
+    const j = await r.json();
+    const docs = j.documents || [];
+    const opts = docs.map(d => `<option value="${escapeHtml(d.file_name)}">${escapeHtml(d.file_name)}</option>`).join('');
+    $('docA').innerHTML = opts || '<option value="">（暂无文档，先去导入）</option>';
+    $('docB').innerHTML = opts || '<option value="">（暂无文档，先去导入）</option>';
+    if (docs.length > 1) $('docB').selectedIndex = 1;
+  } catch (e) {}
+}
+
+function loading(side) {
+  $(side).innerHTML = '<div class="placeholder"><span class="spin"></span>检索+生成中，约需 30~60 秒…</div>';
+}
+
+async function run() {
+  const q = $('question').value.trim();
+  if (!q) { alert('请输入问题'); return; }
+  const tk = localStorage.getItem('kb_token') || '';
+  $('goBtn').disabled = true;
+  loading('ansA'); loading('ansB');
+  $('metaA').textContent = ''; $('metaB').textContent = '';
+  try {
+    if (mode === 'doc') {
+      $('descA').textContent = '📄 ' + $('docA').value;
+      $('descB').textContent = '📄 ' + $('docB').value;
+      const r = await fetch('/api/compare/docs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tk, 'X-Auth-Token': tk },
+        body: JSON.stringify({ question: q, doc_a: $('docA').value, doc_b: $('docB').value, top_k: parseInt($('docTopK').value) || 4 })
+      });
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.message || j.detail || '请求失败');
+      $('ansA').textContent = j.a.answer; $('ansB').textContent = j.b.answer;
+      $('metaA').textContent = `检索命中 ${j.a.chunks} 片段 · 文档：${j.a.doc}`;
+      $('metaB').textContent = `检索命中 ${j.b.chunks} 片段 · 文档：${j.b.doc}`;
+    } else {
+      const paramsB = { rrf_k: parseInt($('abRrfK').value) || 60, search_top_k: parseInt($('abTopK').value) || 3,
+                        rerank_enable: !$('abRerank').checked, web_search_enable: $('abWeb').checked };
+      $('descA').textContent = '默认参数：K=60 · top3 · rerank开 · 联网开';
+      $('descB').textContent = `B组：K=${paramsB.rrf_k} · top${paramsB.search_top_k} · rerank${paramsB.rerank_enable ? '开' : '关'} · 联网${paramsB.web_search_enable ? '开' : '关'}`;
+      const r = await fetch('/api/compare/params', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tk, 'X-Auth-Token': tk },
+        body: JSON.stringify({ question: q, params_a: {}, params_b: paramsB })
+      });
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.message || j.detail || '请求失败');
+      $('ansA').textContent = j.a.answer; $('ansB').textContent = j.b.answer;
+      $('metaA').textContent = `引用来源 ${j.a.sources.length} 条`;
+      $('metaB').textContent = `引用来源 ${j.b.sources.length} 条`;
+    }
+  } catch (e) {
+    $('ansA').textContent = '❌ ' + e.message;
+    $('ansB').textContent = '❌ ' + e.message;
+  } finally {
+    $('goBtn').disabled = false;
+  }
+}
+
+$('question').addEventListener('keydown', e => { if (e.key === 'Enter') run(); });
+loadDocs();
+</script>
+</body>
+</html>

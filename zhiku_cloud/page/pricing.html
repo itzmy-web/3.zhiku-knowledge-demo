@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>掌柜智库 · 方案与定价</title>
+<meta name="description" content="掌柜智库方案与定价：演示站永久免费；私有化自托管免费且开源，数据留在你自己的服务器；企业版提供权限、审计与 SLA。" />
+<meta property="og:title" content="掌柜智库 · 方案与定价" />
+<meta property="og:type" content="website" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
+<style>
+  :root{--bg:#F2F2F7;--surface:#FFFFFF;--surface-2:#F2F2F7;--hairline:rgba(60,60,67,.12);
+    --txt:#1C1C1E;--sub:#8E8E93;--muted:#AEAEB2;--acc:#007AFF;--acc-soft:rgba(0,122,255,.10);
+    --ok:#34C759;--warn:#FF9500;--radius:18px;--shadow:0 14px 40px rgba(0,0,0,.08);
+    --font:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC","Microsoft YaHei",sans-serif;}
+  *{box-sizing:border-box} html,body{margin:0}
+  body{font-family:var(--font);color:var(--txt);background:var(--bg);-webkit-font-smoothing:antialiased;line-height:1.6}
+  a{color:var(--acc);text-decoration:none} a:hover{text-decoration:underline}
+  .skip{position:absolute;left:-999px;top:0;background:var(--acc);color:#fff;padding:10px 16px;border-radius:0 0 10px 0;z-index:99}
+  .skip:focus{left:0} :focus-visible{outline:3px solid rgba(0,122,255,.55);outline-offset:2px;border-radius:6px}
+  .topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;padding:14px 28px;
+    background:rgba(242,242,247,.82);backdrop-filter:saturate(180%) blur(14px);border-bottom:1px solid var(--hairline)}
+  .topbar .brand{display:flex;align-items:center;gap:11px}
+  .topbar .logo{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;background:#1C1C1E;font-size:20px}
+  .topbar .name{font-weight:700;font-size:17px} .topbar .name span{background:linear-gradient(90deg,#007AFF,#5856D6);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .topbar .right{display:flex;gap:10px}
+  .topbar .back{font-size:13px;font-weight:600;color:var(--acc);border:1px solid rgba(0,122,255,.3);padding:8px 14px;border-radius:11px}
+  .topbar .back:hover{background:var(--acc-soft);text-decoration:none}
+  .wrap{max-width:1080px;margin:0 auto;padding:40px 24px 60px}
+  .intro{text-align:center;margin-bottom:34px}
+  .intro .kicker{display:inline-block;font-size:12px;letter-spacing:.22em;color:var(--sub);border:1px solid var(--hairline);padding:6px 14px;border-radius:999px;margin-bottom:16px;background:var(--surface)}
+  .intro h1{font-size:clamp(28px,3.6vw,40px);margin:0 0 12px;font-weight:800;letter-spacing:-.02em}
+  .intro p{color:var(--sub);font-size:15px;max-width:620px;margin:0 auto}
+  .plans{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;align-items:stretch}
+  .plan{background:var(--surface);border:1px solid var(--hairline);border-radius:var(--radius);padding:26px 22px;box-shadow:0 6px 24px rgba(0,0,0,.04);display:flex;flex-direction:column}
+  .plan.featured{border:2px solid var(--acc);box-shadow:0 14px 40px rgba(0,122,255,.18);position:relative}
+  .plan .tag{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--acc);color:#fff;font-size:11px;font-weight:700;padding:4px 14px;border-radius:999px}
+  .plan .pname{font-size:18px;font-weight:800;margin-bottom:4px}
+  .plan .price{font-size:34px;font-weight:800;letter-spacing:-.02em;margin:6px 0 2px}
+  .plan .price small{font-size:14px;font-weight:600;color:var(--sub)}
+  .plan .ptag{font-size:12.5px;color:var(--sub);margin-bottom:16px;min-height:34px}
+  .plan ul{list-style:none;padding:0;margin:0 0 20px;flex:1}
+  .plan li{font-size:13.5px;color:rgba(60,60,67,.85);padding:7px 0 7px 26px;position:relative;line-height:1.5;border-top:1px solid var(--hairline)}
+  .plan li:first-child{border-top:0}
+  .plan li::before{content:"✓";position:absolute;left:0;color:var(--ok);font-weight:800}
+  .plan li.no::before{content:"—";color:var(--muted)}
+  .plan li.no{color:var(--muted)}
+  .plan .cta{display:block;text-align:center;padding:13px;border-radius:13px;font-weight:700;font-size:14px;background:var(--acc-soft);color:var(--acc);border:1px solid rgba(0,122,255,.3)}
+  .plan .cta:hover{background:rgba(0,122,255,.16);text-decoration:none}
+  .plan.featured .cta{background:var(--acc);color:#fff;border-color:var(--acc)}
+  .plan.featured .cta:hover{filter:brightness(1.06);text-decoration:none}
+  .note{margin-top:26px;background:rgba(255,149,0,.08);border:1px solid rgba(255,149,0,.3);border-radius:14px;padding:16px 18px;font-size:13.5px;color:#8A5C00;line-height:1.7}
+  .note b{color:#8A5C00}
+  .faq{margin-top:34px}
+  .faq h2{font-size:20px;font-weight:800;margin:0 0 14px}
+  .faq .q{background:var(--surface);border:1px solid var(--hairline);border-radius:12px;padding:14px 16px;margin-bottom:10px}
+  .faq .q b{display:block;margin-bottom:4px} .faq .q span{font-size:13px;color:var(--sub)}
+  .foot{text-align:center;color:var(--muted);font-size:12px;margin-top:40px;line-height:1.8}
+  .foot a{color:var(--sub)}
+  @media(max-width:880px){.plans{grid-template-columns:1fr}.topbar{padding:12px 16px}}
+</style>
+</head>
+<body id="top">
+<a class="skip" href="#main">跳到主要内容</a>
+<header class="topbar">
+  <div class="brand"><div class="logo">📚</div><div class="name">掌柜<span>智库</span></div></div>
+  <div class="right"><a class="back" href="/demo.html?v=">产品演示</a><a class="back" href="/login.html?v=">登录 →</a></div>
+</header>
+<main class="wrap" id="main">
+  <section class="intro">
+    <span class="kicker">PRICING · 方案与定价</span>
+    <h1>免费开始，按需升级</h1>
+    <p>无论你是想先体验、自己部署，还是企业规模化使用，都有清晰对应的方案。价格透明，没有隐藏陷阱。</p>
+  </section>
+
+  <div class="plans">
+    <div class="plan">
+      <div class="pname">演示站</div>
+      <div class="price">¥0 <small>/ 永久免费</small></div>
+      <div class="ptag">适合快速体验产品交互与「引用溯源」能力</div>
+      <ul>
+        <li>免登录在线产品演示</li>
+        <li>共享样例知识库问答</li>
+        <li>查看工作台外壳与功能预览</li>
+        <li class="no">不支持上传真实文档</li>
+        <li class="no">无持久化与隔离</li>
+      </ul>
+      <a class="cta" href="/demo.html?v=">直接体验 →</a>
+    </div>
+
+    <div class="plan featured">
+      <span class="tag">最受欢迎</span>
+      <div class="pname">私有化自托管</div>
+      <div class="price">¥0 <small>/ 免费 · 开源</small></div>
+      <div class="ptag">适合个人与企业把知识库跑在自己的服务器上</div>
+      <ul>
+        <li>完整 RAG 功能（导入/对话/评测/对比/图谱）</li>
+        <li>数据完全留在你自己的服务器</li>
+        <li>Docker 一键部署，开源可二次开发</li>
+        <li>支持本地 / Ollama / 各类 API 模型</li>
+        <li>受本机硬件限制（Milvus 建议 ≥16GB 内存）</li>
+      </ul>
+      <a class="cta" href="/about.html?v=">了解部署与开源 →</a>
+    </div>
+
+    <div class="plan">
+      <div class="pname">企业版</div>
+      <div class="price">按需 <small>/ 联系商务</small></div>
+      <div class="ptag">面向中大型企业的权限、合规与服务保障</div>
+      <ul>
+        <li>三级角色 + 知识库级访问控制</li>
+        <li>租户隔离 + 访问 / 修改审计日志</li>
+        <li>SSO / 企业微信 / 钉钉集成</li>
+        <li>性能 SLA 与专属技术支持</li>
+        <li>私有化部署同享，可定制</li>
+      </ul>
+      <a class="cta" href="/about.html?v=">联系我们 →</a>
+    </div>
+  </div>
+
+  <div class="note">
+    <b>关于「免费」的边界（避免误解）：</b><br/>
+    • <b>演示站</b>：永久免费，但为公开共享环境，仅用于体验交互，<b>请勿上传任何真实、涉密或个人隐私资料</b>，数据不保证隔离与持久化。<br/>
+    • <b>私有化自托管</b>：软件免费且开源，你只需承担自己的服务器/算力成本；功能完整，但官方不提供 SLA，需自行运维（我们提供部署文档）。<br/>
+    • <b>企业版</b>：在自托管基础上叠加权限、审计、集成与保障，按规模与定制计费。
+  </div>
+
+  <section class="faq">
+    <h2>常见疑问</h2>
+    <div class="q"><b>开源协议是什么？能商用吗？</b><span>私有化部署版本以开源协议发布，具体协议类型、仓库地址与商用授权条款以项目主页 / 文档为准；本页不代行法律声明。如需商用授权确认，请通过「关于」页联系我们。</span></div>
+    <div class="q"><b>私有化部署真的不用付软件费吗？</b><span>是的，软件本身免费开源。你需要自行准备运行环境（服务器、向量库、对象存储），仅承担硬件与可选的大模型 API 调用成本。</span></div>
+    <div class="q"><b>演示站的数据会被拿去训练吗？</b><span>不会。演示站不持久化你上传的内容（且我们建议不要在演示站上传真实资料）；私有化部署时数据完全不出你的服务器。</span></div>
+  </section>
+
+  <div class="foot">
+    © 2026 掌柜智库 · 让每一次提问都有据可查<br/>
+    <a href="/security.html?v=">安全与合规</a> · <a href="/about.html?v=">关于与开源</a> · <a href="/login.html?v=">登录</a>
+  </div>
+</main>
+</body>
+</html>

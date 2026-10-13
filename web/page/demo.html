@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>掌柜智库 · 产品演示（免登录）</title>
+<meta name="description" content="掌柜智库 RAG 知识库 30 秒演示：上传说明书/手册后，随问随答且每个答案都标注引用来源。无需登录，先看产品能帮你干什么。" />
+<meta name="keywords" content="RAG,知识库,智能问答,引用溯源,企业知识管理,设备手册,掌柜智库" />
+<meta property="og:title" content="掌柜智库 · 产品演示（免登录）" />
+<meta property="og:description" content="30 秒看懂：把文档变成随问随答的知识库，答案有据可查。" />
+<meta property="og:type" content="website" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
+<style>
+  :root{
+    --bg:#F2F2F7; --surface:#FFFFFF; --surface-2:#F2F2F7; --hairline:rgba(60,60,67,.12);
+    --txt:#1C1C1E; --sub:#8E8E93; --muted:#AEAEB2;
+    --acc:#007AFF; --acc-soft:rgba(0,122,255,.10); --ok:#34C759; --danger:#FF3B30; --warn:#FF9500;
+    --radius:18px; --shadow:0 14px 40px rgba(0,0,0,.08);
+    --font:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC","Microsoft YaHei",sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{font-family:var(--font);color:var(--txt);background:var(--bg);
+    -webkit-font-smoothing:antialiased;line-height:1.6}
+  a{color:var(--acc);text-decoration:none}
+  a:hover{text-decoration:underline}
+  .skip{position:absolute;left:-999px;top:0;background:var(--acc);color:#fff;padding:10px 16px;border-radius:0 0 10px 0;z-index:99}
+  .skip:focus{left:0}
+  :focus-visible{outline:3px solid rgba(0,122,255,.55);outline-offset:2px;border-radius:6px}
+
+  /* 顶栏 */
+  .topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;
+    padding:14px 28px;background:rgba(242,242,247,.82);backdrop-filter:saturate(180%) blur(14px);
+    border-bottom:1px solid var(--hairline)}
+  .topbar .brand{display:flex;align-items:center;gap:11px}
+  .topbar .logo{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;background:#1C1C1E;font-size:20px}
+  .topbar .name{font-weight:700;font-size:17px}
+  .topbar .name span{background:linear-gradient(90deg,#007AFF,#5856D6);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .topbar .right{display:flex;align-items:center;gap:12px}
+  .pill{font-size:12px;font-weight:600;color:var(--warn);background:rgba(255,149,0,.12);
+    border:1px solid rgba(255,149,0,.3);padding:6px 12px;border-radius:999px}
+  .topbar .back{font-size:13px;font-weight:600;color:var(--acc);
+    border:1px solid rgba(0,122,255,.3);padding:8px 14px;border-radius:11px}
+  .topbar .back:hover{background:var(--acc-soft);text-decoration:none}
+
+  .wrap{max-width:1120px;margin:0 auto;padding:34px 24px 60px}
+
+  /* 头部介绍 */
+  .intro{text-align:center;margin-bottom:30px}
+  .intro .kicker{display:inline-block;font-size:12px;letter-spacing:.22em;color:var(--sub);
+    border:1px solid var(--hairline);padding:6px 14px;border-radius:999px;margin-bottom:18px;background:var(--surface)}
+  .intro h1{font-size:clamp(28px,3.6vw,42px);line-height:1.18;margin:0 0 14px;font-weight:800;letter-spacing:-.02em}
+  .intro h1 em{font-style:normal;background:linear-gradient(120deg,#007AFF,#5856D6);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .intro p{color:var(--sub);font-size:15px;max-width:640px;margin:0 auto}
+
+  /* 主区两栏 */
+  .grid{display:grid;grid-template-columns:0.92fr 1.08fr;gap:22px;align-items:start}
+  .card{background:var(--surface);border:1px solid var(--hairline);border-radius:var(--radius);
+    padding:22px;box-shadow:0 6px 24px rgba(0,0,0,.04)}
+  .card h3{margin:0 0 4px;font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px}
+  .card .desc{color:var(--sub);font-size:13px;margin:0 0 16px}
+
+  /* 示例知识库 */
+  .kb-doc{border:1px dashed rgba(0,122,255,.4);border-radius:13px;padding:14px 16px;background:var(--acc-soft);margin-bottom:14px}
+  .kb-doc .t{font-weight:700;font-size:14px;display:flex;align-items:center;gap:8px}
+  .kb-doc .m{font-size:12px;color:var(--sub);margin-top:4px}
+  .sec-chips{display:flex;flex-wrap:wrap;gap:8px}
+  .sec-chips span{font-size:12px;color:var(--txt);background:var(--surface-2);border:1px solid var(--hairline);
+    padding:6px 11px;border-radius:9px}
+
+  /* 检索过程可视化 */
+  .lanes{display:flex;flex-direction:column;gap:10px}
+  .lane{display:grid;grid-template-columns:96px 1fr;gap:10px;align-items:center}
+  .lane .lab{font-size:12px;font-weight:600;color:var(--sub);text-align:right}
+  .lane .bars{display:flex;flex-direction:column;gap:5px}
+  .bar{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--txt)}
+  .bar .track{flex:1;height:8px;background:var(--surface-2);border-radius:6px;overflow:hidden;border:1px solid var(--hairline)}
+  .bar .fill{height:100%;border-radius:6px;background:linear-gradient(90deg,#5AC8FA,#007AFF)}
+  .bar .v{width:42px;text-align:right;color:var(--sub);font-variant-numeric:tabular-nums}
+  .merge{margin-top:6px;padding-top:12px;border-top:1px dashed var(--hairline);
+    font-size:12.5px;color:var(--txt);display:flex;align-items:center;gap:8px}
+  .merge b{color:var(--acc)}
+  .tag{font-size:11px;font-weight:700;color:#fff;background:var(--acc);padding:2px 8px;border-radius:7px}
+
+  /* 聊天演示 */
+  .chat-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 16px}
+  .chip{font-size:13px;color:var(--acc);background:var(--acc-soft);border:1px solid rgba(0,122,255,.25);
+    padding:9px 13px;border-radius:11px;cursor:pointer;transition:.18s;font-family:inherit;text-align:left}
+  .chip:hover{background:rgba(0,122,255,.18);transform:translateY(-1px)}
+  .chip:active{transform:translateY(0)}
+  .chat{display:flex;flex-direction:column;gap:14px;min-height:280px}
+  .msg{display:flex;gap:10px;animation:pop .3s ease}
+  @keyframes pop{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .msg .av{width:32px;height:32px;border-radius:9px;flex:none;display:grid;place-items:center;font-size:16px}
+  .msg.user{flex-direction:row-reverse}
+  .msg.user .av{background:var(--acc);color:#fff}
+  .msg.bot .av{background:#1C1C1E;color:#fff}
+  .bubble{max-width:82%;padding:12px 15px;border-radius:14px;font-size:14px;line-height:1.7}
+  .msg.user .bubble{background:var(--acc);color:#fff;border-top-right-radius:4px}
+  .msg.bot .bubble{background:var(--surface-2);border:1px solid var(--hairline);border-top-left-radius:4px}
+  .typing{display:inline-flex;gap:4px;align-items:center;padding:4px 2px}
+  .typing i{width:7px;height:7px;border-radius:50%;background:var(--muted);animation:blink 1.2s infinite}
+  .typing i:nth-child(2){animation-delay:.2s}.typing i:nth-child(3){animation-delay:.4s}
+  @keyframes blink{0%,60%,100%{opacity:.3;transform:translateY(0)}30%{opacity:1;transform:translateY(-3px)}}
+
+  /* 引用卡片 */
+  .cites{margin-top:12px;border-top:1px dashed var(--hairline);padding-top:10px}
+  .cites .ct{font-size:11px;font-weight:700;color:var(--sub);letter-spacing:.04em;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+  .cite{display:flex;gap:10px;padding:9px 11px;border:1px solid var(--hairline);border-radius:11px;margin-bottom:7px;background:var(--surface)}
+  .cite .sc{flex:none;width:46px;text-align:center}
+  .cite .sc .n{font-size:17px;font-weight:800;color:var(--acc);font-variant-numeric:tabular-nums}
+  .cite .sc .u{font-size:10px;color:var(--sub)}
+  .cite .body{font-size:12.5px;line-height:1.55}
+  .cite .body .doc{font-weight:700;color:var(--txt)}
+  .cite .body .meta{color:var(--sub);font-size:11px;margin:2px 0 4px}
+  .cite .body .snip{color:rgba(28,28,30,.82)}
+
+  /* 特性三卡 */
+  .feats3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:30px}
+  .feat3{background:var(--surface);border:1px solid var(--hairline);border-radius:var(--radius);padding:20px;box-shadow:0 6px 24px rgba(0,0,0,.04)}
+  .feat3 .ic{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;font-size:20px;background:var(--acc-soft);border:1px solid rgba(0,122,255,.2);margin-bottom:12px}
+  .feat3 h4{margin:0 0 6px;font-size:15px;font-weight:700}
+  .feat3 p{margin:0;font-size:13px;color:var(--sub);line-height:1.65}
+
+  .note{margin-top:26px;background:rgba(255,149,0,.08);border:1px solid rgba(255,149,0,.3);
+    border-radius:14px;padding:14px 16px;font-size:13px;color:#8A5C00;line-height:1.65}
+  .note b{color:#8A5C00}
+
+  .cta{margin-top:30px;text-align:center;background:linear-gradient(135deg,#007AFF,#5856D6);
+    color:#fff;border-radius:22px;padding:30px 24px;box-shadow:0 16px 44px rgba(0,122,255,.28)}
+  .cta h3{margin:0 0 8px;font-size:20px;font-weight:800}
+  .cta p{margin:0 0 18px;opacity:.92;font-size:14px}
+  .cta a{display:inline-block;background:#fff;color:var(--acc);font-weight:700;font-size:15px;
+    padding:13px 26px;border-radius:13px;box-shadow:0 8px 22px rgba(0,0,0,.18)}
+  .cta a:hover{text-decoration:none;transform:translateY(-1px)}
+
+  .foot{text-align:center;color:var(--muted);font-size:12px;margin-top:34px;line-height:1.7}
+  @media (max-width:860px){
+    .grid{grid-template-columns:1fr}
+    .feats3{grid-template-columns:1fr}
+    .topbar{padding:12px 16px}
+  }
+</style>
+</head>
+<body id="top">
+<a class="skip" href="#main">跳到主要内容</a>
+<header class="topbar">
+  <div class="brand"><div class="logo">📚</div><div class="name">掌柜<span>智库</span></div></div>
+  <div class="right">
+    <span class="pill">演示站 · 免登录</span>
+    <a class="back" href="/login.html?v=">返回登录 →</a>
+  </div>
+</header>
+
+<main class="wrap" id="main">
+  <section class="intro">
+    <span class="kicker">PRODUCT DEMO · 30 秒看懂</span>
+    <h1>把文档，变成<em>随问随答</em>的知识库</h1>
+    <p>下面是一段真实可点的演示：我们已经替你上传好一份《空气炸锅说明书》，你直接提问，系统会先查资料、再回答，并且<strong>每个答案都标出来自哪份文档、第几页</strong>——这正是 RAG 知识库的核心价值。</p>
+  </section>
+
+  <div class="grid">
+    <!-- 左：示例库 + 检索过程 -->
+    <div>
+      <div class="card" style="margin-bottom:18px">
+        <h3>📚 示例知识库</h3>
+        <p class="desc">演示内置的一份文档（真实产品里，上传的是你自己的资料）</p>
+        <div class="kb-doc">
+          <div class="t">📄 极客空气炸锅 KZ-520 使用说明书</div>
+          <div class="m">PDF · 16 页 · 已自动切分、向量化入库</div>
+        </div>
+        <div class="sec-chips">
+          <span>安全须知</span><span>初次使用</span><span>烹饪指南</span><span>清洁保养</span><span>故障排查</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>🔍 检索过程长什么样</h3>
+        <p class="desc">以「炸薯条用多少度」为例，看系统怎么找到答案</p>
+        <div class="lanes">
+          <div class="lane"><div class="lab">语义检索</div><div class="bars">
+            <div class="bar"><span>烹饪指南 p7</span><span class="track"><span class="fill" style="width:94%"></span></span><span class="v">0.94</span></div>
+            <div class="bar"><span>食材表 p1</span><span class="track"><span class="fill" style="width:88%"></span></span><span class="v">0.88</span></div>
+          </div></div>
+          <div class="lane"><div class="lab">关键词检索</div><div class="bars">
+            <div class="bar"><span>烹饪指南 p7</span><span class="track"><span class="fill" style="width:81%"></span></span><span class="v">0.81</span></div>
+            <div class="bar"><span>健康指南 p4</span><span class="track"><span class="fill" style="width:42%"></span></span><span class="v">0.42</span></div>
+          </div></div>
+          <div class="lane"><div class="lab">假设问答检索</div><div class="bars">
+            <div class="bar"><span>烹饪指南 p7</span><span class="track"><span class="fill" style="width:91%"></span></span><span class="v">0.91</span></div>
+          </div></div>
+          <div class="merge"><span class="tag">RRF 融合</span> 三条路的结果智能排序 → <b>Top1：烹饪指南 p7（综合最相关）</b> 喂给大模型生成答案</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 右：聊天演示 -->
+    <div class="card">
+      <div class="chat-head"><h3>💬 试用问答</h3><span class="desc" style="margin:0">点击问题，看答案与引用</span></div>
+      <div class="chips" id="chips"></div>
+      <div class="chat" id="chat">
+        <div class="msg bot">
+          <div class="av">🤖</div>
+          <div class="bubble">你好，我是掌柜智库。这份说明书我已经读完了，随便问我点什么——比如「炸薯条用多少度」「E3 报错是什么意思」。👇</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 三特性 -->
+  <section class="feats3">
+    <div class="feat3"><div class="ic">🎯</div><h4>找得更准</h4><p>三重检索（语义 + 关键词 + 假设问答）融合排序，再经精排筛选，把最相关的片段先送到你面前。</p></div>
+    <div class="feat3"><div class="ic">🔗</div><h4>答案有据可查</h4><p>每个回答都标注引用来源（文档名 / 页码 / 相关度），点开就看原文片段，拒绝凭空编造。</p></div>
+    <div class="feat3"><div class="ic">🔒</div><h4>数据在你手里</h4><p>私有化部署时，文档、向量库、会话全部留在你自己的服务器，不上传第三方，隐私透明。</p></div>
+  </section>
+
+  <div class="note">
+    <b>说明：</b>本页是一段<strong>脚本化演示</strong>，用来直观展示产品交互与「引用溯源」能力，并非连接真实后端。真实产品里，你上传的是自己的设备手册 / 合同 / 学习资料，问答内容完全基于你的文档。
+  </div>
+
+  <section class="cta">
+    <h3>想用你自己的文档试试？</h3>
+    <p>登录后即可上传资料、搭建专属知识库，立刻拥有「随问随答 + 引用溯源」的能力。</p>
+    <a href="/login.html?v=">登录 / 注册，开始搭建 →</a>
+  </section>
+
+  <div class="foot">
+    © 2026 掌柜智库 · 让每一次提问都有据可查<br/>
+    <a href="/pricing.html?v=">方案与定价</a> · <a href="/security.html?v=">安全与合规</a> · <a href="/about.html?v=">关于与开源</a> · <a href="/login.html?v=">登录</a><br/>
+    演示站为共享环境，请勿上传任何真实、涉密或个人隐私资料。
+  </div>
+</main>
+
+<script>
+/* ===== 脚本化演示：纯前端，无后端依赖 ===== */
+const QA = [
+  { q:"第一次用空气炸锅，需要怎么处理？",
+    kw:["第一次","首次","新机","初次","怎么用","开箱","处理"],
+    a:"首次使用请按三步操作：① 拆包后取出炸篮与烤架，用温水和中性洗洁精清洗并擦干；② 将空炸篮放回，机器空载以 200℃ 预热 5 分钟，去除出厂保护油味；③ 置于通风处散味后正常使用。预热时请勿放入食物。",
+    cites:[
+      {sc:96,doc:"KZ-520 使用说明书",page:3,snip:"首次使用请先清洗炸篮与烤架，空载 200℃ 预热 5 分钟以去除保护油味。"}
+    ]},
+  { q:"炸薯条用多少度、多久？",
+    kw:["薯条","土豆","温度","多少度","几分钟","时间","烹饪","炸"],
+    a:"冷冻薯条推荐 200℃、15–20 分钟，约第 8 分钟拉出炸篮翻动一次更酥脆；自家切的鲜薯条建议先浸泡去淀粉、擦干后喷少量油，180–200℃ 烤 18–25 分钟。容量请勿超过炸篮 2/3，避免受热不均。",
+    cites:[
+      {sc:94,doc:"KZ-520 使用说明书",page:7,snip:"冷冻薯条 200℃ / 15–20 分钟，第 8 分钟翻动；鲜薯条 180–200℃ / 18–25 分钟。"},
+      {sc:88,doc:"常见食材烹饪表",page:1,snip:"薯类建议不超过炸篮 2/3 容量，过满会导致受热不均、熟度不一。"}
+    ]},
+  { q:"炸篮和烤架怎么清洗？能放洗碗机吗？",
+    kw:["清洗","洗","洗碗机","清洁","炸篮","脏","保养"],
+    a:"每次使用后待冷却，炸篮与烤架可用温水 + 中性洗洁精手洗，顽固油渍用软海绵；KZ-520 的炸篮支持洗碗机上层（≤60℃），但烤架建议手洗以防涂层磨损。机身外壳用微湿软布擦拭，切勿整机水洗或浸泡。",
+    cites:[
+      {sc:95,doc:"KZ-520 使用说明书",page:12,snip:"炸篮可洗碗机上层（≤60℃），烤架建议手洗；机身用微湿软布擦拭，勿整机水洗。"}
+    ]},
+  { q:"屏幕显示 E3 是什么意思？",
+    kw:["e3","故障","报错","代码","显示","错误","不工作","保护","e1","e2"],
+    a:"E3 表示「温度过高保护」，通常因通风口被遮挡或连续长时间高温运行触发。处理：断电冷却 30 分钟，确认机器四周保留 ≥10cm 散热空间、进风口无遮挡后重新通电。若反复出现，可能是温控元件异常，建议联系售后，不要自行拆机。",
+    cites:[
+      {sc:93,doc:"KZ-520 使用说明书",page:15,snip:"E3=温度过高保护；断电冷却 30 分钟，保证四周 ≥10cm 散热空间后重试。"}
+    ]},
+  { q:"用空气炸锅比传统油炸健康在哪？",
+    kw:["油烟","健康","脂肪","对比","油炸","优点","为什么","好处"],
+    a:"空气炸锅以热风循环代替大量食用油，相同份量下用油可减少 70%–90%，显著降低脂肪与热量摄入；同时高温热风能逼出食材自身油脂。但注意它仍是高温烹饪，建议搭配蔬菜、控制加工肉摄入，才更接近健康饮食。",
+    cites:[
+      {sc:90,doc:"健康烹饪指南",page:4,snip:"热风循环替代浸炸，用油可减少 70%–90%，显著降低脂肪与热量摄入。"}
+    ]}
+];
+
+const chat=$('chat'), chips=$('chips');
+function $(id){return document.getElementById(id);}
+let busy=false;
+
+function addChips(){
+  QA.forEach((item,i)=>{
+    const b=document.createElement('button');
+    b.className='chip';b.textContent=item.q;b.setAttribute('aria-label','示例问题：'+item.q);
+    b.onclick=()=>ask(i);
+    chips.appendChild(b);
+  });
+}
+function bubble(role,html){
+  const m=document.createElement('div');
+  m.className='msg '+role;
+  m.innerHTML='<div class="av">'+(role==='user'?'🙂':'🤖')+'</div><div class="bubble">'+html+'</div>';
+  chat.appendChild(m);chat.scrollTop=chat.scrollHeight;
+  return m;
+}
+function citeBlock(cites){
+  let h='<div class="cites"><div class="ct">🔗 引用来源（答案有据可查）</div>';
+  cites.forEach(c=>{
+    h+='<div class="cite"><div class="sc"><div class="n">'+c.sc+'</div><div class="u">相关度</div></div>'+
+       '<div class="body"><div class="doc">📄 '+c.doc+'</div>'+
+       '<div class="meta">第 '+c.page+' 页</div>'+
+       '<div class="snip">'+c.snip+'</div></div></div>';
+  });
+  h+='</div>';
+  return h;
+}
+function ask(idx){
+  if(busy)return;busy=true;
+  const item=QA[idx];
+  bubble('user',escapeHtml(item.q));
+  const typing=bubble('bot','<span class="typing"><i></i><i></i><i></i></span>');
+  setTimeout(()=>{
+    typing.querySelector('.bubble').innerHTML=escapeHtml(item.a)+citeBlock(item.cites);
+    chat.scrollTop=chat.scrollHeight;busy=false;
+  },750);
+}
+function escapeHtml(s){return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+addChips();
+</script>
+</body>
+</html>

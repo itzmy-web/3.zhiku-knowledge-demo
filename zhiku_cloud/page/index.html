@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<script>/* 登录守卫：每次打开网址都必须先经过登录页（一次性入场券机制） */
+(function(){try{
+  if(window.self!==window.top) return;  /* iframe 由工作台统一把关 */
+  if(sessionStorage.getItem('kb_just_auth')==='1'){ sessionStorage.removeItem('kb_just_auth'); return; }
+  /* 登录后显示当前用户昵称 */
+  document.addEventListener('DOMContentLoaded', function(){
+    try{
+      fetch('/api/auth/me',{headers:{Authorization:'Bearer '+localStorage.getItem('kb_token'),'X-Auth-Token':localStorage.getItem('kb_token')||''}})
+        .then(function(r){return r.json();})
+        .then(function(j){ if(j.ok){ var el=document.querySelector('.sub'); if(el) el.textContent='👤 '+j.user.nickname+' ｜ '+el.textContent; } });
+    }catch(e){}
+  });
+  location.replace('/login.html?v='+Date.now());  /* 带时间戳：绕开一切旧缓存 */
+}catch(e){}})();</script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>掌柜智库 · 一体化工作台</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root{
+    /* 深墨蓝侧栏 + 青绿(teal)主色 + 浅色内容区（与登录页同一套视觉语言） */
+    --bg:#F4F7FA;            /* 内容区底色：冷调浅灰，非纯白 */
+    --surface:#0A2742;       /* 侧栏：深墨蓝 */
+    --surface-2:#123A5C;     /* 侧栏次级面：悬停 */
+    --hairline:rgba(255,255,255,.10);
+    --txt:#EAF4F8;           /* 侧栏主文字 */
+    --sub:#9CB6C8;           /* 侧栏次文字 */
+    --muted:#6E8AA0;
+    --acc:#14C0B0;           /* 青绿主色 */
+    --acc-2:#12A8C4;         /* 青绿渐变尾色 */
+    --danger:#FF6B6B;
+  }
+  body {
+    font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+    height: 100vh; display: flex; flex-direction: row; overflow: hidden;
+    background: var(--bg); color: var(--txt);
+  }
+
+  /* ===== 左侧竖向边栏（参照合同审批系统侧栏样式） ===== */
+  aside {
+    width: 238px; flex: none; height: 100%;
+    background: linear-gradient(180deg,#0A2742 0%,#061E30 100%); border-right: 1px solid rgba(79,224,210,.14); box-shadow: 2px 0 18px rgba(4,20,34,.30);
+    display: flex; flex-direction: column; gap: 4px;
+    padding: 16px 12px 12px; overflow-y: auto; z-index: 10;
+  }
+  .side-logo { display: flex; align-items: center; gap: 12px; padding: 4px 8px 16px; }
+  .side-logo .mark {
+    width: 46px; height: 46px; border-radius: 13px; flex: none;
+    background: linear-gradient(135deg,#14C0B0,#12A8C4); display: grid; place-items: center; font-size: 22px;
+    box-shadow: 0 8px 22px rgba(20,192,176,.40);
+  }
+  .side-logo .t1 { font-size: 17px; font-weight: 800; letter-spacing: 1px; color: #fff; }
+  .side-logo .t2 { font-size: 10px; letter-spacing: .14em; color: #5FD8CB; margin-top: 2px; }
+  .side-logo .sub { font-size: 10.5px; color: var(--muted); margin-top: 2px; }
+
+  .side-item {
+    display: flex; align-items: center; gap: 11px; width: 100%;
+    padding: 10px 12px; border-radius: 11px; border: none; cursor: pointer;
+    background: transparent; text-align: left; font-family: inherit; transition: all .18s;
+  }
+  .side-item .ic { font-size: 17px; flex: none; }
+  .side-item .tt { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+  .side-item .lb { font-size: 14px; font-weight: 600; color: #C6DAE6; white-space: nowrap; }
+  .side-item .tg { font-size: 10.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .side-item:hover { background: rgba(79,224,210,.09); }
+  .side-item:hover .lb { color: #7BF0E4; }
+  /* 选中态：青绿实心块（对照参考稿的侧栏高亮） */
+  .side-item.active { background: linear-gradient(120deg,#12B0A4,#0E9DB0); box-shadow: 0 8px 20px rgba(18,176,164,.34); border: 1px solid rgba(79,224,210,.30); }
+  .side-item.active .lb { color: #FFFFFF; }
+  .side-item.active .tg { color: rgba(255,255,255,.78); }
+
+  /* 每个标签右侧的刷新按钮：悬停/选中时浮现 */
+  .side-item .rf {
+    margin-left: auto; flex: none; width: 24px; height: 24px; border-radius: 8px;
+    display: grid; place-items: center; font-size: 13px; line-height: 1;
+    color: var(--muted); background: transparent; border: 1px solid transparent;
+    cursor: pointer; opacity: 0; transition: all .15s; user-select: none;
+  }
+  .side-item:hover .rf, .side-item.active .rf { opacity: 1; }
+  .side-item.active .rf { color: rgba(255,255,255,.85); }
+  .side-item .rf:hover { color: #7BF0E4; background: rgba(79,224,210,.16); border-color: rgba(79,224,210,.30); }
+  .side-item.active .rf:hover { color:#fff; background: rgba(255,255,255,.18); border-color: rgba(255,255,255,.28); }
+
+  .side-spacer { flex: 1; }
+  .side-quit {
+    display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%;
+    padding: 11px 12px; border-radius: 12px; cursor: pointer; font-family: inherit;
+    border: 1px solid rgba(255,107,107,.40); background: rgba(255,107,107,.12);
+    color: var(--danger); font-size: 13.5px; font-weight: 600; transition: all .18s;
+  }
+  .side-quit:hover { background: rgba(255,107,107,.20); }
+  .side-links {
+    display: flex; flex-wrap: wrap; gap: 4px 12px;
+    padding: 12px 8px 2px; border-top: 1px solid var(--hairline); margin-top: 10px;
+  }
+  .side-links a { font-size: 11px; color: var(--sub); text-decoration: none; }
+  .side-links a:hover { color: #7BF0E4; }
+  /* 管理后台分组分隔（团队管理 / 审计 / 监控 / 备份 归为一组） */
+  .side-sep { margin: 10px 8px 2px; font-size: 10.5px; letter-spacing: .14em; color: var(--muted); text-transform: uppercase; }
+
+  /* ===== 右侧舞台：iframe 工作区 + 底部状态条 ===== */
+  .stage { flex: 1; display: flex; flex-direction: column; min-width: 0; height: 100%; }
+  main { flex: 1; position: relative; background: var(--bg); }
+  iframe {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    border: none; display: none; background: #fff;
+  }
+  iframe.show { display: block; }
+  /* 模块首次加载时的加载态（避免点开标签闪白） */
+  .stage-loading { position:absolute; inset:0; display:none; flex-direction:column; gap:12px;
+    align-items:center; justify-content:center; background: var(--bg); color: var(--sub); z-index:5; }
+  .stage-loading.on { display:flex; }
+  .stage-loading .spin { width:30px; height:30px; border-radius:50%;
+    border:3px solid rgba(11,31,51,.14); border-top-color: var(--acc); animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  footer {
+    background: #FFFFFF; color: #7A8CA0; font-size:12px;
+    padding: 7px 18px; display: flex; justify-content: space-between;
+    border-top: 1px solid rgba(11,31,51,.10);
+  }
+  footer a { color: #0FA79B; text-decoration: none; margin-left: 16px; }
+  footer a:hover { text-decoration: underline; }
+
+  /* 移动端适配：侧栏变顶部横向滚动条 */
+  @media (max-width: 760px){
+    body { flex-direction: column; }
+    aside {
+      width: 100%; height: auto; flex-direction: row; align-items: center;
+      overflow-x: auto; overflow-y: hidden; padding: 8px 10px; gap: 6px;
+      border-right: none; border-bottom: 1px solid var(--hairline);
+    }
+    .side-logo { padding: 0 6px 0 2px; }
+    .side-logo .tt2, .side-logo .sub { display: none; }
+    .side-item { width: auto; flex: none; padding: 8px 10px; }
+    .side-item .tt { display: none; }
+    .side-item .rf { opacity: 1; width: 26px; height: 26px; }
+    .side-spacer, .side-links { display: none; }
+    .side-quit { width: auto; flex: none; padding: 8px 10px; }
+    footer { padding: 5px 10px; }
+    footer span:first-child { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ 左侧竖向边栏 ============ -->
+<aside>
+  <div class="side-logo">
+    <div class="mark">📚</div>
+    <div>
+      <div class="t1">掌柜智库</div>
+      <div class="t2">ZHIGU KNOWLEDGE BASE</div>
+      <div class="sub">企业级智能知识库系统 | 云端演示版</div>
+    </div>
+  </div>
+
+  <button id="tab-import" class="side-item active" onclick="switchTab('import')">
+    <span class="ic">📥</span><span class="tt"><span class="lb">知识库导入</span><span class="tg">文档上传 · 解析 · 向量化</span></span><span class="rf" title="刷新本页" onclick="refreshFrame(event,'import')">↻</span>
+  </button>
+  <button id="tab-chat" class="side-item" onclick="switchTab('chat')">
+    <span class="ic">💬</span><span class="tt"><span class="lb">智能问答</span><span class="tg">RAG 检索 · 流式回答</span></span><span class="rf" title="刷新本页" onclick="refreshFrame(event,'chat')">↻</span>
+  </button>
+  <button id="tab-docs" class="side-item" onclick="switchTab('docs')">
+    <span class="ic">📁</span><span class="tt"><span class="lb">文档管理</span><span class="tg">列表 · 删除 · 向量清理</span></span><span class="rf" title="刷新本页" onclick="refreshFrame(event,'docs')">↻</span>
+  </button>
+  <button id="tab-eval" class="side-item" onclick="switchTab('eval')">
+    <span class="ic">📊</span><span class="tt"><span class="lb">质量评测</span><span class="tg">忠实度 · 相关度 · 趋势</span></span><span class="rf" title="刷新本页" onclick="refreshFrame(event,'eval')">↻</span>
+  </button>
+  <button id="tab-data" class="side-item" onclick="switchTab('data')">
+    <span class="ic">📈</span><span class="tt"><span class="lb">数据中心</span><span class="tg">热门问题 · 知识缺口 · 用量</span></span><span class="rf" title="刷新本页" onclick="refreshFrame(event,'data')">↻</span>
+  </button>
+  <button id="tab-compare" class="side-item" onclick="switchTab('compare')">
+    <span class="ic">⚖️</span><span class="tt"><span class="lb">对比实验室</span><span class="tg">文档对比 · 参数 A/B</span></span><span class="rf" title="刷新本页" onclick="refreshFrame(event,'compare')">↻</span>
+  </button>
+  <button id="tab-graph" class="side-item" onclick="switchTab('graph')">
+    <span class="ic">🕸️</span><span class="tt"><span class="lb">知识图谱</span><span class="tg">实体关系 · 可视化</span></span><span class="rf" title="刷新本页" onclick="refreshFrame(event,'graph')">↻</span>
+  </button>
+  <button id="tab-spaces" class="side-item" onclick="switchTab('spaces')">
+    <span class="ic">🗂️</span><span class="tt"><span class="lb">知识空间</span><span class="tg">多库 · 邀请协作</span></span><span class="rf" title="刷新本页" onclick="refreshFrame(event,'spaces')">↻</span>
+  </button>
+
+  <div class="side-sep">管理后台</div>
+  <button id="tab-members" class="side-item" onclick="switchTab('members')" data-admin="1">
+    <span class="ic">👥</span><span class="tt"><span class="lb">团队管理</span><span class="tg">成员 · 角色 · 租户</span></span><span class="rf" title="刷新本页" onclick="refreshFrame(event,'members')">↻</span>
+  </button>
+  <button id="tab-audit" class="side-item" onclick="switchTab('audit')" data-admin="1">
+    <span class="ic">📜</span><span class="tt"><span class="lb">审计日志</span><span class="tg">操作追溯</span></span><span class="rf" title="刷新本页" onclick="refreshFrame(event,'audit')">↻</span>
+  </button>
+  <button id="tab-monitor" class="side-item" onclick="switchTab('monitor')" data-admin="1">
+    <span class="ic">🖥️</span><span class="tt"><span class="lb">系统监控</span><span class="tg">运行指标 · 数据规模</span></span><span class="rf" title="刷新本页" onclick="refreshFrame(event,'monitor')">↻</span>
+  </button>
+  <button id="tab-backup" class="side-item" onclick="switchTab('backup')" data-admin="1">
+    <span class="ic">💾</span><span class="tt"><span class="lb">备份恢复</span><span class="tg">全量备份 · 一键还原</span></span><span class="rf" title="刷新本页" onclick="refreshFrame(event,'backup')">↻</span>
+  </button>
+
+  <div class="side-spacer"></div>
+  <button class="side-quit" onclick="try{localStorage.removeItem('kb_token');localStorage.removeItem('kb_user');}catch(e){}location.replace('/login.html?v='+Date.now())">🚪 退出登录</button>
+  <div class="side-links">
+    <a href="/import.html" target="_blank">独立打开导入页</a>
+    <a href="/chat.html" target="_blank">独立打开问答页</a>
+    <a href="/login.html" target="_blank">登录页</a>
+    <a href="/docs" target="_blank">API 文档</a>
+  </div>
+</aside>
+
+<!-- ============ 右侧工作区 ============ -->
+<div class="stage">
+  <main>
+    <iframe id="frame-import" class="show" src="/import.html" onload="onFrameLoad('import')" onerror="onFrameLoad('import')"></iframe>
+    <iframe id="frame-chat" data-page="/chat.html" onload="onFrameLoad('chat')" onerror="onFrameLoad('chat')"></iframe>
+    <iframe id="frame-docs" data-page="/docs.html" onload="onFrameLoad('docs')" onerror="onFrameLoad('docs')"></iframe>
+    <iframe id="frame-eval" data-page="/eval.html" onload="onFrameLoad('eval')" onerror="onFrameLoad('eval')"></iframe>
+    <iframe id="frame-data" data-page="/data.html" onload="onFrameLoad('data')" onerror="onFrameLoad('data')"></iframe>
+    <iframe id="frame-compare" data-page="/compare.html" onload="onFrameLoad('compare')" onerror="onFrameLoad('compare')"></iframe>
+    <iframe id="frame-graph" data-page="/graph.html" onload="onFrameLoad('graph')" onerror="onFrameLoad('graph')"></iframe>
+    <iframe id="frame-spaces" data-page="/spaces.html" onload="onFrameLoad('spaces')" onerror="onFrameLoad('spaces')"></iframe>
+    <iframe id="frame-members" data-page="/members.html" onload="onFrameLoad('members')" onerror="onFrameLoad('members')"></iframe>
+    <iframe id="frame-audit" data-page="/audit.html" onload="onFrameLoad('audit')" onerror="onFrameLoad('audit')"></iframe>
+    <iframe id="frame-monitor" data-page="/monitor.html" onload="onFrameLoad('monitor')" onerror="onFrameLoad('monitor')"></iframe>
+    <iframe id="frame-backup" data-page="/backup.html" onload="onFrameLoad('backup')" onerror="onFrameLoad('backup')"></iframe>
+    <div class="stage-loading" id="stageLoading"><div class="spin"></div><span>加载中…</span></div>
+  </main>
+
+  <footer>
+    <span>各模块切换不丢状态；数据有更新时点标签右侧 ↻ 刷新</span>
+    <span>
+      <a href="/import.html" target="_blank">独立打开导入页</a>
+      <a href="/chat.html" target="_blank">独立打开问答页</a>
+      <a href="/login.html" target="_blank">登录页</a>
+      <a href="/docs" target="_blank">API 文档</a>
+    </span>
+  </footer>
+</div>
+
+<script>
+  var TABS = ['import','chat','docs','eval','data','compare','graph','spaces','members','audit','monitor','backup'];
+  var loaded = {};
+  function showLoading(){ var el=document.getElementById('stageLoading'); if(el) el.classList.add('on'); }
+  function hideLoading(){ var el=document.getElementById('stageLoading'); if(el) el.classList.remove('on'); }
+  function onFrameLoad(name){ loaded[name]=true; hideLoading(); }
+  /* 懒加载：首次点击标签时才真正加载对应页面（首屏只加载 1 页，快很多） */
+  function ensureFrame(name) {
+    var f = document.getElementById('frame-' + name);
+    if (f && !f.getAttribute('src') && f.dataset.page) {
+      if (!loaded[name]) showLoading();          // 仅首次加载显示加载态
+      f.src = f.dataset.page;
+    } else if (loaded[name]) {
+      hideLoading();                             // 切回已加载页 → 确保加载态消失
+    }
+    return f;
+  }
+  function switchTab(name) {
+    TABS.forEach(function(n){
+      var tab = document.getElementById('tab-' + n);
+      tab.classList.toggle('active', n === name);
+      if (n === name) tab.setAttribute('aria-current','page'); else tab.removeAttribute('aria-current');
+      var f = document.getElementById('frame-' + n);
+      if (!f) return;
+      if (n === name) { ensureFrame(n); f.classList.add('show'); }
+      else { f.classList.remove('show'); }
+    });
+  }
+  /* 每个标签右侧的 ↻：只刷新该页，不影响其他页；顺带切过去 */
+  function refreshFrame(ev, name) {
+    ev.stopPropagation();
+    var f = document.getElementById('frame-' + name);
+    if (!f) return;
+    if (!f.getAttribute('src')) { f.src = f.dataset.page; }
+    else { try { f.contentWindow.location.reload(); } catch (e) { f.src = f.getAttribute('src'); } }
+    switchTab(name);
+  }
+  /* 管理员专属：拉取当前用户，非 admin 隐藏所有 data-admin 入口（团队管理 / 审计日志），页面本身也做 403 兜底 */
+  (function(){
+    var tk = localStorage.getItem('kb_token') || '';
+    fetch('/api/auth/me', { headers: { Authorization: 'Bearer ' + tk, 'X-Auth-Token': tk } })
+      .then(function(r){ return r.json(); })
+      .then(function(j){
+        var isAdmin = j.ok && j.user && j.user.role === 'admin';
+        if (!isAdmin) {
+          document.querySelectorAll('.side-item[data-admin="1"]').forEach(function(t){
+            t.style.display = 'none';
+            var name = t.id.replace('tab-', '');
+            var f = document.getElementById('frame-' + name);
+            if (f) f.removeAttribute('data-page');
+          });
+        }
+      }).catch(function(){});
+  })();
+</script>
+
+<script src="/avatar.js"></script>
+</body>
+</html>

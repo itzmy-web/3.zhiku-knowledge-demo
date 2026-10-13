@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<script>/* 登录守卫：每次打开网址都必须先经过登录页（一次性入场券机制） */
+(function(){try{
+  if(window.self!==window.top) return;  /* iframe 由工作台统一把关 */
+  if(sessionStorage.getItem('kb_just_auth')==='1'){ sessionStorage.removeItem('kb_just_auth'); return; }
+  location.replace('/login.html');
+}catch(e){}})();</script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>掌柜智库 · 数字人 Demo（魔珐星云）</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+      margin: 0; padding: 24px; background: #f5f5f7; color: #1d1d1f;
+    }
+    .wrap { max-width: 960px; margin: 0 auto; }
+    h2 { font-size: 20px; margin: 0 0 16px; }
+    .status {
+      padding: 10px 14px; border-radius: 10px; background: #fff;
+      border: 1px solid #e0e0e0; margin-bottom: 16px; font-size: 13px;
+      transition: all .25s;
+    }
+    .status.loading { border-color: #ff9500; background: #fff8f0; }
+    .status.ready   { border-color: #34c759; background: #f0fff4; }
+    .status.error   { border-color: #ff3b30; background: #fff0f0; }
+    .panel { display: flex; gap: 24px; align-items: flex-start; flex-wrap: wrap; }
+    .avatar-box {
+      width: 270px; height: 480px; border-radius: 14px; overflow: hidden;
+      background: #000; box-shadow: 0 8px 24px rgba(0,0,0,.12);
+    }
+    #sdk { width: 270px; height: 480px; }
+    .controls {
+      flex: 1; min-width: 300px; height: 480px;
+      display: flex; flex-direction: column;
+    }
+    .label { font-size: 12px; color: #6e6e73; margin-bottom: 6px; }
+    .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .btn {
+      padding: 9px 18px; border: none; border-radius: 10px; background: #007aff;
+      color: #fff; font-size: 14px; cursor: pointer; transition: transform .15s, opacity .15s;
+    }
+    .btn:hover:not(:disabled) { transform: translateY(-1px); }
+    .btn:disabled { background: #c7c7cc; cursor: not-allowed; }
+    .btn.ghost { background: #8e8e93; }
+    .btn.danger { background: #ff3b30; }
+    .progress { flex-shrink: 0; height: 6px; background: #e0e0e0; border-radius: 3px; margin: 6px 0 10px; overflow: hidden; }
+    .progress-bar { height: 100%; background: linear-gradient(90deg,#007aff,#5ac8fa); width: 0%; transition: width .3s; }
+    .log-section { flex: 1; min-height: 0; display: flex; flex-direction: column; margin-bottom: 10px; }
+    .input-section textarea {
+      flex: 1; min-height: 0; width: 100%; padding: 10px 12px; border-radius: 10px;
+      border: 1px solid #d2d2d7; font-size: 14px; resize: none; font-family: inherit;
+    }
+    .input-section textarea:focus { outline: none; border-color: #007aff; }
+    .input-section .btn-row { margin-top: 10px; }
+    .input-section { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+    .log {
+      flex: 1; min-height: 0; padding: 12px; background: #1c1c1e; color: #98c379;
+      border-radius: 10px; font-family: Consolas, "SF Mono", monospace; font-size: 12px;
+      overflow: auto; white-space: pre-wrap; line-height: 1.5;
+    }
+    a.back { font-size: 13px; color: #007aff; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h2>📚 掌柜智库 · 数字人 Demo（魔珐星云） <a class="back" href="/">← 返回工作台</a></h2>
+    <div id="status" class="status">状态：等待初始化…（凭证从后端 /api/digital-human/credentials 动态获取）</div>
+
+    <div class="panel">
+      <div class="avatar-box"><div id="sdk"></div></div>
+
+      <div class="controls">
+        <div class="label">资源下载进度</div>
+        <div class="progress"><div id="progressBar" class="progress-bar"></div></div>
+
+        <div class="log-section">
+          <div class="label">运行日志</div>
+          <div id="log" class="log"></div>
+        </div>
+
+        <div class="input-section">
+          <div class="label">输入数字人要说的话</div>
+          <textarea id="content" placeholder="例如：欢迎使用掌柜智库智能知识库"></textarea>
+          <div class="btn-row">
+            <button id="speakBtn" class="btn" onclick="doSpeak()" disabled>说话</button>
+            <button class="btn ghost" onclick="doIdle()">回到待机</button>
+            <button id="initBtn" class="btn" onclick="doToggleConnection()">初始化连接</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 加载魔珐星云具身驱动 SDK -->
+  <script src="https://media.xingyun3d.com/xingyun3d/general/litesdk/xmovAvatar@latest.js"></script>
+  <script>
+    const logEl = document.getElementById('log');
+    function log() {
+      const parts = Array.from(arguments).map(a =>
+        (a && typeof a === 'object') ? JSON.stringify(a) : a
+      );
+      const line = '[' + new Date().toLocaleTimeString() + '] ' + parts.join(' ');
+      logEl.textContent += line + '\n';
+      logEl.scrollTop = logEl.scrollHeight;
+      console.log.apply(console, arguments);
+    }
+
+    const statusEl    = document.getElementById('status');
+    const progressBar = document.getElementById('progressBar');
+    const speakBtn    = document.getElementById('speakBtn');
+    const initBtn     = document.getElementById('initBtn');
+    function setStatus(text, level) {
+      statusEl.textContent = '状态：' + text;
+      statusEl.className = 'status ' + (level || '');
+    }
+
+    let LiteSDK = null;
+
+    /* 1. 从后端获取凭证（密钥只存 .env，不进前端源码） */
+    async function getCredentials() {
+      const resp = await fetch('/api/digital-human/credentials');
+      if (!resp.ok) throw new Error('凭证接口请求失败（可能未登录）');
+      const cred = await resp.json();
+      if (!cred.app_id || !cred.secret_configured) {
+        throw new Error('未配置魔珐星云凭证：请在项目 .env 里填写 DIGITAL_HUMAN_APP_ID / DIGITAL_HUMAN_APP_SECRET（xingyun3d.com 实名注册送 300 分钟免费）');
+      }
+      return cred;
+    }
+
+    /* 2. 初始化连接 */
+    let inited = false;
+    async function initSDK() {
+      try {
+        setStatus('正在获取凭证…', 'loading');
+        const cred = await getCredentials();
+        setStatus('正在初始化，下载资源中…', 'loading');
+
+        LiteSDK = new XmovAvatar({
+          containerId: '#sdk',
+          appId: cred.app_id,
+          appSecret: '', // A5：密钥不下发，由服务端代理注入
+          gatewayServer: location.origin + '/api/digital-human/proxy',
+          headers: {},
+          hardwareAcceleration: 'prefer-hardware',
+          enableLogger: true,
+          onWidgetEvent(data) { log('Widget事件:', data); },
+          onNetworkInfo(n) { log('网络:', n); },
+          onMessage(message) {
+            log('SDK消息:', message);
+            if (message && message.code && message.code !== 50001 && message.code !== 50002) {
+              setStatus('SDK错误 code=' + message.code + ' ' + (message.message || ''), 'error');
+            }
+          },
+          onStateChange(s) { log('状态变化:', s); },
+          onStatusChange(s) { log('Status:', s); },
+          onStateRenderChange(s, d) { log('状态渲染耗时:', s, d + 'ms'); },
+          onVoiceStateChange(s) {
+            log('语音:', s);
+            if (s === 'start') setStatus('数字人正在说话…', 'loading');
+            else if (s === 'end') setStatus('就绪', 'ready');
+          },
+          onStartSessionWarning(m) { log('会话配置警告:', m); },
+        });
+
+        LiteSDK.init({
+          initModel: 'normal',
+          onDownloadProgress(progress) {
+            progressBar.style.width = progress + '%';
+            if (progress >= 100 && !inited) {
+              inited = true;
+              setStatus('就绪，可以说话了', 'ready');
+              speakBtn.disabled = false;
+              updateInitBtn();
+              log('✅ 资源下载完成，数字人就绪');
+            }
+          },
+        });
+      } catch (e) {
+        setStatus(e.message, 'error');
+        log('❌ 初始化失败:', e.message);
+        initBtn.disabled = false;
+        initBtn.textContent = '初始化连接';
+      }
+    }
+
+    /* 3. 说话 */
+    function doSpeak() {
+      const text = document.getElementById('content').value.trim();
+      if (!text)  { log('⚠️ 请输入内容'); return; }
+      if (!inited){ log('⚠️ 数字人尚未初始化完成'); return; }
+      LiteSDK.speak(text, true, true);
+      log('speak:', text);
+    }
+
+    /* 4. 回到待机 */
+    function doIdle() {
+      if (LiteSDK) LiteSDK.interactiveidle();
+      log('切回待机');
+    }
+
+    /* 5. 销毁 / 二合一按钮 */
+    function updateInitBtn() {
+      if (inited) {
+        initBtn.textContent = '销毁实例';
+        initBtn.className = 'btn danger';
+      } else {
+        initBtn.textContent = '初始化连接';
+        initBtn.className = 'btn';
+      }
+      initBtn.disabled = false;
+    }
+    function doDestroy() {
+      if (LiteSDK) LiteSDK.destroy();
+      inited = false;
+      speakBtn.disabled = true;
+      progressBar.style.width = '0%';
+      updateInitBtn();
+      setStatus('已销毁，可重新初始化连接', 'error');
+      log('实例已销毁');
+    }
+    function doToggleConnection() {
+      if (inited) { doDestroy(); return; }
+      initBtn.disabled = true;
+      initBtn.textContent = '连接中…';
+      initSDK();
+    }
+
+    /* 6. 页面卸载清理 */
+    window.addEventListener('beforeunload', () => {
+      try { if (LiteSDK) LiteSDK.destroy(); } catch (e) {}
+    });
+
+    setStatus('等待初始化，请点击「初始化连接」按钮');
+  </script>
+</body>
+</html>

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>掌柜智库 · 关于与开源</title>
+<meta name="description" content="掌柜智库：面向设备手册、企业知识管理与个人资料库的 RAG 知识库。三路召回 + RRF 融合 + 重排流水线，Docker 一键部署，开源免费自托管。" />
+<meta property="og:title" content="掌柜智库 · 关于与开源" />
+<meta property="og:type" content="website" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
+<style>
+  :root{--bg:#F2F2F7;--surface:#FFFFFF;--surface-2:#F2F2F7;--hairline:rgba(60,60,67,.12);
+    --txt:#1C1C1E;--sub:#8E8E93;--muted:#AEAEB2;--acc:#007AFF;--acc-soft:rgba(0,122,255,.10);
+    --radius:18px;--shadow:0 14px 40px rgba(0,0,0,.08);
+    --font:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC","Microsoft YaHei",sans-serif;}
+  *{box-sizing:border-box} html,body{margin:0}
+  body{font-family:var(--font);color:var(--txt);background:var(--bg);-webkit-font-smoothing:antialiased;line-height:1.6}
+  a{color:var(--acc);text-decoration:none} a:hover{text-decoration:underline}
+  .skip{position:absolute;left:-999px;top:0;background:var(--acc);color:#fff;padding:10px 16px;border-radius:0 0 10px 0;z-index:99}
+  .skip:focus{left:0} :focus-visible{outline:3px solid rgba(0,122,255,.55);outline-offset:2px;border-radius:6px}
+  .topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;padding:14px 28px;
+    background:rgba(242,242,247,.82);backdrop-filter:saturate(180%) blur(14px);border-bottom:1px solid var(--hairline)}
+  .topbar .brand{display:flex;align-items:center;gap:11px}
+  .topbar .logo{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;background:#1C1C1E;font-size:20px}
+  .topbar .name{font-weight:700;font-size:17px} .topbar .name span{background:linear-gradient(90deg,#007AFF,#5856D6);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .topbar .right{display:flex;gap:10px}
+  .topbar .back{font-size:13px;font-weight:600;color:var(--acc);border:1px solid rgba(0,122,255,.3);padding:8px 14px;border-radius:11px}
+  .topbar .back:hover{background:var(--acc-soft);text-decoration:none}
+  .wrap{max-width:960px;margin:0 auto;padding:40px 24px 60px}
+  .intro{text-align:center;margin-bottom:30px}
+  .intro .kicker{display:inline-block;font-size:12px;letter-spacing:.22em;color:var(--sub);border:1px solid var(--hairline);padding:6px 14px;border-radius:999px;margin-bottom:16px;background:var(--surface)}
+  .intro h1{font-size:clamp(28px,3.6vw,40px);margin:0 0 12px;font-weight:800;letter-spacing:-.02em}
+  .intro p{color:var(--sub);font-size:15px;max-width:640px;margin:0 auto}
+  .card{background:var(--surface);border:1px solid var(--hairline);border-radius:var(--radius);padding:24px;box-shadow:0 6px 24px rgba(0,0,0,.04);margin-bottom:18px}
+  .card h2{margin:0 0 12px;font-size:19px;font-weight:800;display:flex;align-items:center;gap:8px}
+  .card p{margin:0 0 10px;font-size:14px;color:rgba(60,60,67,.85);line-height:1.75}
+  .card p:last-child{margin-bottom:0}
+  .stack{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+  .stack span{font-size:12.5px;background:var(--surface-2);border:1px solid var(--hairline);padding:6px 12px;border-radius:9px;color:var(--txt)}
+  .cmp{width:100%;border-collapse:collapse;font-size:13.5px;margin-top:4px}
+  .cmp th,.cmp td{border:1px solid var(--hairline);padding:11px 12px;text-align:left;vertical-align:top}
+  .cmp th{background:var(--surface-2);font-weight:700}
+  .cmp td b{color:var(--acc)}
+  .cmp tr td:first-child{font-weight:600;color:var(--txt)}
+  .cta{margin-top:8px;text-align:center;background:linear-gradient(135deg,#007AFF,#5856D6);color:#fff;border-radius:20px;padding:28px 22px;box-shadow:0 16px 44px rgba(0,122,255,.28)}
+  .cta h3{margin:0 0 8px;font-size:20px;font-weight:800}
+  .cta p{margin:0 0 16px;opacity:.92;font-size:14px}
+  .cta a{display:inline-block;background:#fff;color:var(--acc);font-weight:700;padding:12px 24px;border-radius:13px}
+  .cta a:hover{text-decoration:none;transform:translateY(-1px)}
+  .foot{text-align:center;color:var(--muted);font-size:12px;margin-top:36px;line-height:1.8}
+  .foot a{color:var(--sub)}
+  @media(max-width:880px){.topbar{padding:12px 16px}.cmp{font-size:12px}.cmp th,.cmp td{padding:8px}}
+</style>
+</head>
+<body id="top">
+<a class="skip" href="#main">跳到主要内容</a>
+<header class="topbar">
+  <div class="brand"><div class="logo">📚</div><div class="name">掌柜<span>智库</span></div></div>
+  <div class="right"><a class="back" href="/demo.html?v=">产品演示</a><a class="back" href="/login.html?v=">登录 →</a></div>
+</header>
+<main class="wrap" id="main">
+  <section class="intro">
+    <span class="kicker">ABOUT · 关于与开源</span>
+    <h1>把文档，变成随问随答的知识库</h1>
+    <p>掌柜智库是一个面向设备手册、企业知识管理与个人资料库的 RAG 知识库。我们关注的不只是"能问答"，而是"答得准、查得到出处"。</p>
+  </section>
+
+  <div class="card">
+    <h2>🎯 我们解决什么问题</h2>
+    <p>企业的设备说明书、制度文档、合同、培训资料往往又厚又散，员工查一份资料要翻半天。掌柜智库把这些文档统一解析、向量化入库，用自然语言就能问，答案附带引用出处，减少重复答疑、降低培训成本。</p>
+    <p>对个人用户，它是一个可私有化沉淀的学习笔记 / 论文 / 电子书问答助手，数据完全掌握在自己手里。</p>
+  </div>
+
+  <div class="card">
+    <h2>🧠 技术栈</h2>
+    <p>核心是一条"先查资料、再回答"的检索增强（RAG）流水线：</p>
+    <div class="stack">
+      <span>多格式解析（PDF/Word/TXT/MD/图片）</span>
+      <span>自动切分 + 向量化</span>
+      <span>稠密 + 稀疏 + HyDE 三路召回</span>
+      <span>RRF 融合排序</span>
+      <span>交叉编码器精排</span>
+      <span>断崖截断</span>
+      <span>SSE 流式输出</span>
+      <span>Milvus 向量库</span>
+      <span>MinIO 对象存储</span>
+      <span>MongoDB 元数据</span>
+      <span>Docker 一键部署</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>⚖ 与同类产品的差异</h2>
+    <table class="cmp">
+      <tr><th>维度</th><th>掌柜智库</th><th>通用聊天 / 笔记工具</th></tr>
+      <tr><td>答案依据</td><td><b>严格基于你的文档</b>，带引用溯源</td><td>可能凭通用知识编造</td></tr>
+      <tr><td>检索能力</td><td><b>三路召回 + RRF 融合 + 精排</b></td><td>多为单一向量检索</td></tr>
+      <tr><td>数据归属</td><td><b>私有化部署，数据不出服务器</b></td><td>常驻第三方云端</td></tr>
+      <tr><td>部署方式</td><td>Docker 一键自托管，开源</td><td>多为 SaaS 订阅</td></tr>
+      <tr><td>场景侧重</td><td>设备手册 / 企业知识库 / 个人资料库</td><td>通用</td></tr>
+    </table>
+    <p style="margin-top:10px;color:var(--sub);font-size:12.5px">注：以上为产品设计目标与差异化定位；具体能力边界以实际版本为准。与 AnythingLLM / OpenWebUI / PrivateGPT 等开源方案相比，掌柜智库强调"多路召回 + 重排流水线"的检索质量与面向手册 / 企业场景的开箱体验。</p>
+  </div>
+
+  <div class="card">
+    <h2>📦 开源与协议</h2>
+    <p>私有化部署版本以<b>开源协议</b>发布，可免费自托管并二次开发。具体协议类型、仓库地址与商用授权条款，请以项目主页 / 文档为准——本页不代行法律声明。</p>
+    <p>如果你希望确认商用授权、参与贡献或获取企业支持，欢迎通过下方方式联系我们。</p>
+  </div>
+
+  <section class="cta">
+    <h3>想用你自己的文档试试？</h3>
+    <p>免登录先看产品演示，或直接部署私有化版本，把知识库跑在你自己的服务器上。</p>
+    <a href="/demo.html?v=">免登录看演示 →</a>
+  </section>
+
+  <div class="foot">
+    © 2026 掌柜智库 · 让每一次提问都有据可查<br/>
+    <a href="/pricing.html?v=">方案与定价</a> · <a href="/security.html?v=">安全与合规</a> · <a href="/login.html?v=">登录</a>
+  </div>
+</main>
+</body>
+</html>

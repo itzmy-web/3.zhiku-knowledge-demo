@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>质量评测 · 掌柜智库</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: "Microsoft YaHei", "PingFang SC", sans-serif; background: #f4f7fa; padding: 22px; }
+    .head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+    .head h2 { color: #0b1f33; font-size: 18px; }
+    .btn { border: none; cursor: pointer; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; background: #12b0a4; color: #fff; }
+    .btn:hover { background: #0fa79b; }
+    .stats { display: flex; gap: 14px; margin-bottom: 16px; flex-wrap: wrap; }
+    .stat { flex: 1; min-width: 150px; background: #fff; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,.06); padding: 16px; text-align: center; }
+    .stat .num { font-size: 26px; font-weight: 700; color: #0b1f33; }
+    .stat .lbl { font-size: 12px; color: #888; margin-top: 4px; }
+    .stat.good .num { color: #0a7a43; }
+    .stat.warn .num { color: #b26a00; }
+    .row { display: flex; gap: 14px; margin-bottom: 16px; }
+    .chart-card { flex: 1; background: #fff; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,.06); padding: 16px; }
+    .chart-card h3 { font-size: 14px; color: #0b1f33; margin-bottom: 10px; }
+    .card { background: #fff; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,.06); overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { background: #f7f8fa; color: #555; text-align: left; padding: 11px 14px; font-weight: 600; }
+    td { padding: 11px 14px; border-top: 1px solid #f0f0f0; color: #333; }
+    tr:hover td { background: #f7fbfa; }
+    .empty { text-align: center; padding: 40px; color: #999; }
+    .meta { color: #888; font-size: 12px; margin-top: 6px; }
+    .score { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11.5px; font-weight: 600; }
+    .hi { background: #e6f7ee; color: #0a7a43; }
+    .mid { background: #fff6e6; color: #b26a00; }
+    .lo { background: #ffecec; color: #c0392b; }
+    .q-cell { max-width: 420px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  </style>
+</head>
+<body>
+  <div class="head">
+    <h2>📊 RAG 质量评测看板</h2>
+    <button class="btn" onclick="load()">↻ 刷新</button>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="num" id="stTotal">—</div><div class="lbl">评测轮数</div></div>
+    <div class="stat" id="stFaithCard"><div class="num" id="stFaith">—</div><div class="lbl">忠实度均值 (0~5)</div></div>
+    <div class="stat" id="stRelCard"><div class="num" id="stRel">—</div><div class="lbl">相关度均值 (0~5)</div></div>
+    <div class="stat"><div class="num" id="stHit">—</div><div class="lbl">检索命中率</div></div>
+  </div>
+
+  <div class="row">
+    <div class="chart-card"><h3>雷达图 · 质量画像</h3><canvas id="radar" height="200"></canvas></div>
+    <div class="chart-card"><h3>趋势 · 最近 20 轮得分</h3><canvas id="trend" height="200"></canvas></div>
+  </div>
+
+  <div class="card">
+    <h3>🛡️ 知识巡检<span class="sub" style="font-size:11px;color:#999;font-weight:400;margin-left:6px">预设问题批量体检知识库</span></h3>
+    <div style="margin-bottom:10px">
+      <button class="btn" id="insBtn" onclick="runInspection()">🩺 立即巡检（约 1~2 分钟）</button>
+      <span id="insSummary" style="font-size:13px;color:#333;margin-left:10px"></span>
+    </div>
+    <table>
+      <thead><tr><th>巡检时间</th><th>忠实度均值</th><th>相关度均值</th><th>结论</th><th>文档数</th></tr></thead>
+      <tbody id="insTbody"><tr><td colspan="5" class="empty">加载中…</td></tr></tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>📋 评测明细<span class="sub" style="font-size:11px;color:#999;font-weight:400;margin-left:6px">每轮问答自动评测的记录</span></h3>
+    <table>
+      <thead>
+        <tr><th style="width:40%">问题</th><th>忠实度</th><th>相关度</th><th>引用来源数</th><th>评语</th><th>时间</th></tr>
+      </thead>
+      <tbody id="tbody"><tr><td colspan="6" class="empty">加载中…</td></tr></tbody>
+    </table>
+  </div>
+  <p class="meta">忠实度=回答是否有据可查（幻觉越少越高）；相关度=是否切题完整；检索命中率=有引用来源的问答占比。每轮问答完成时自动评测。<br>🛡️ 巡检：用预设问题集批量走"检索→回答→打分"，得分低于 3.5 判定不通过，提示需要补充/修正知识库。配置 .env 的 INSPECTION_HOUR（0~23）后每天定时自动巡检。</p>
+
+<script>
+const $ = id => document.getElementById(id);
+let radarChart = null, trendChart = null;
+
+function scoreBadge(v) {
+  if (v == null) return '<span class="score mid">未打分</span>';
+  const cls = v >= 4 ? 'hi' : v >= 2.5 ? 'mid' : 'lo';
+  return '<span class="score ' + cls + '">' + v.toFixed(1) + '</span>';
+}
+function fmtTime(ts) {
+  if (!ts) return '—';
+  const d = new Date(ts * 1000);
+  return isNaN(d.getTime()) ? '—' : d.toLocaleString('zh-CN', {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'});
+}
+function escapeHtml(t) { return String(t).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+async function load() {
+  const tk = localStorage.getItem('kb_token') || '';
+  const opt = { headers: { Authorization: 'Bearer ' + tk, 'X-Auth-Token': tk } };
+  try {
+    const [rs, rl] = await Promise.all([
+      fetch('/api/eval/stats', opt), fetch('/api/eval/list', opt)
+    ]);
+    const s = (await rs.json()).stats || {};
+    const records = (await rl.json()).records || [];
+
+    $('stTotal').textContent = s.total ?? 0;
+    $('stFaith').textContent = s.faithfulness_avg != null ? s.faithfulness_avg : '—';
+    $('stRel').textContent = s.relevance_avg != null ? s.relevance_avg : '—';
+    $('stHit').textContent = s.retrieval_hit_rate != null ? (s.retrieval_hit_rate * 100).toFixed(0) + '%' : '—';
+    $('stFaithCard').className = 'stat ' + (s.faithfulness_avg >= 4 ? 'good' : s.faithfulness_avg != null && s.faithfulness_avg < 2.5 ? 'warn' : '');
+    $('stRelCard').className = 'stat ' + (s.relevance_avg >= 4 ? 'good' : s.relevance_avg != null && s.relevance_avg < 2.5 ? 'warn' : '');
+
+    // 雷达图：把 0~5 分映射为百分比
+    const radarData = [
+      s.faithfulness_avg != null ? s.faithfulness_avg / 5 * 100 : 0,
+      s.relevance_avg != null ? s.relevance_avg / 5 * 100 : 0,
+      s.retrieval_hit_rate != null ? s.retrieval_hit_rate * 100 : 0
+    ];
+    if (radarChart) radarChart.destroy();
+    radarChart = new Chart($('radar'), {
+      type: 'radar',
+      data: {
+        labels: ['忠实度', '相关度', '检索命中'],
+        datasets: [{ label: '质量画像 (%)', data: radarData,
+          backgroundColor: 'rgba(10,132,255,.18)', borderColor: '#0a84ff', pointBackgroundColor: '#0a84ff' }]
+      },
+      options: { scales: { r: { min: 0, max: 100, ticks: { stepSize: 25 } } },
+                 plugins: { legend: { display: false } } }
+    });
+
+    // 趋势图：最近 20 轮（records 已倒序，反转成正序）
+    const recent = records.slice(0, 20).reverse();
+    if (trendChart) trendChart.destroy();
+    trendChart = new Chart($('trend'), {
+      type: 'line',
+      data: {
+        labels: recent.map((_, i) => 'N-' + (recent.length - 1 - i)),
+        datasets: [
+          { label: '忠实度', data: recent.map(r => r.faithfulness), borderColor: '#0a7a43', backgroundColor: 'rgba(10,122,67,.1)', tension: .3, spanGaps: true },
+          { label: '相关度', data: recent.map(r => r.relevance), borderColor: '#0a84ff', backgroundColor: 'rgba(10,132,255,.1)', tension: .3, spanGaps: true }
+        ]
+      },
+      options: { scales: { y: { min: 0, max: 5 } } }
+    });
+
+    // 明细表
+    if (!records.length) {
+      $('tbody').innerHTML = '<tr><td colspan="6" class="empty">还没有评测记录，去「💬 智能问答」提个问题吧（问答完成自动评测）</td></tr>';
+      return;
+    }
+    $('tbody').innerHTML = records.map(r =>
+      '<tr>' +
+      '<td class="q-cell" title="' + escapeHtml(r.question) + '">' + escapeHtml(r.question) + '</td>' +
+      '<td>' + scoreBadge(r.faithfulness) + '</td>' +
+      '<td>' + scoreBadge(r.relevance) + '</td>' +
+      '<td>' + (r.sources_count || 0) + '</td>' +
+      '<td>' + escapeHtml(r.reason || '') + '</td>' +
+      '<td>' + fmtTime(r.ts) + '</td>' +
+      '</tr>').join('');
+  } catch (e) {
+    $('tbody').innerHTML = '<tr><td colspan="6" class="empty">网络异常</td></tr>';
+  }
+}
+
+/* ===== 知识巡检 ===== */
+async function loadInspection() {
+  const tk = localStorage.getItem('kb_token') || '';
+  try {
+    const r = await fetch('/api/inspection/list', { headers: { Authorization: 'Bearer ' + tk, 'X-Auth-Token': tk } });
+    const j = await r.json();
+    const recs = j.records || [];
+    if (!recs.length) {
+      $('insTbody').innerHTML = '<tr><td colspan="5" class="empty">暂无巡检记录，点上方「立即巡检」跑一轮</td></tr>';
+      return;
+    }
+    $('insSummary').textContent = `最近一轮（${recs[0].date}）：忠实度 ${recs[0].faithfulness_avg ?? '—'}`;
+    $('insTbody').innerHTML = recs.map(r =>
+      '<tr>' +
+      '<td>' + escapeHtml(r.date || '—') + '</td>' +
+      '<td>' + scoreBadge(r.faithfulness_avg) + '</td>' +
+      '<td>' + scoreBadge(r.relevance_avg) + '</td>' +
+      '<td>' + (r.passed ? '<span class="score hi">✅ 通过</span>' : '<span class="score lo">⚠️ 需补充知识库</span>') + '</td>' +
+      '<td>' + (r.doc_count || 0) + '</td>' +
+      '</tr>').join('');
+  } catch (e) {
+    $('insTbody').innerHTML = '<tr><td colspan="5" class="empty">网络异常</td></tr>';
+  }
+}
+
+async function runInspection() {
+  const tk = localStorage.getItem('kb_token') || '';
+  $('insBtn').disabled = true;
+  $('insBtn').textContent = '⏳ 巡检中（检索+回答+打分）…';
+  try {
+    const r = await fetch('/api/inspection/run', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + tk, 'X-Auth-Token': tk }
+    });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.message || '巡检失败');
+    await loadInspection();
+  } catch (e) {
+    alert('巡检失败：' + e.message);
+  } finally {
+    $('insBtn').disabled = false;
+    $('insBtn').textContent = '🩺 立即巡检（约 1~2 分钟）';
+  }
+}
+
+load();
+loadInspection();
+</script>
+</body>
+</html>

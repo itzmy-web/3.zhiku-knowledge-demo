@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>掌柜智库 · 系统监控</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: "Microsoft YaHei", "PingFang SC", sans-serif; background: #E9EDF3; color: #1E2530; padding: 24px; }
+  h1 { font-size: 20px; font-weight: 800; margin-bottom: 4px; }
+  .sub { color: #7A8499; font-size: 12.5px; margin-bottom: 18px; }
+  .toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 18px; }
+  button { font-family: inherit; cursor: pointer; border: none; border-radius: 10px; padding: 9px 16px; font-size: 13.5px; font-weight: 600; background: #5B9DFF; color: #fff; box-shadow: 0 4px 12px rgba(91,157,255,.30); }
+  button:hover { background: #4A8BF0; }
+  button.ghost { background: #fff; color: #3D74E0; border: 1px solid rgba(61,116,224,.3); box-shadow: none; }
+  .ts { color: #7A8499; font-size: 12px; }
+
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px,1fr)); gap: 12px; margin-bottom: 22px; }
+  .card { background: #fff; border: 1px solid rgba(60,60,67,.10); border-radius: 14px; padding: 16px; box-shadow: 0 4px 14px rgba(30,37,48,.06); }
+  .card .k { font-size: 12px; color: #7A8499; }
+  .card .v { font-size: 26px; font-weight: 800; margin-top: 6px; color: #1E2530; }
+  .card .v small { font-size: 13px; font-weight: 600; color: #7A8499; }
+
+  .panel { background: #fff; border: 1px solid rgba(60,60,67,.10); border-radius: 14px; padding: 18px; margin-bottom: 18px; box-shadow: 0 4px 14px rgba(30,37,48,.06); }
+  .panel h2 { font-size: 15px; font-weight: 800; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+  .panel h2 .dot { width: 8px; height: 8px; border-radius: 50%; background: #5B9DFF; }
+
+  .row { display: flex; align-items: center; gap: 12px; margin: 9px 0; font-size: 13px; }
+  .row .name { width: 180px; flex: none; color: #3A4252; font-family: Consolas, "Microsoft YaHei", monospace; }
+  .row .barwrap { flex: 1; background: #EDF1F7; border-radius: 8px; height: 14px; overflow: hidden; }
+  .row .bar { height: 100%; border-radius: 8px; background: linear-gradient(90deg,#5B9DFF,#3D74E0); transition: width .4s; }
+  .row .num { width: 90px; flex: none; text-align: right; font-weight: 700; color: #1E2530; }
+  .row .num.err { color: #FF6B6B; }
+
+  .errbox { background: #FFF3F3; border: 1px solid rgba(255,107,107,.35); border-radius: 12px; padding: 14px; color: #B23B3B; font-size: 13px; }
+  .errbox .e { font-family: Consolas, monospace; margin: 4px 0; }
+  .okline { color: #2E9E6B; font-weight: 700; }
+  .hidden { display: none; }
+  .demo-banner { background:#FFF8E8; border:1px solid rgba(230,180,60,.45); color:#9A6B00; border-radius:10px; padding:10px 12px; font-size:12.5px; margin-bottom:14px; }
+  .lock { text-align: center; padding: 60px 20px; color: #7A8499; font-size: 15px; }
+</style>
+</head>
+<body>
+  <div id="lock" class="lock hidden">🔒 仅管理员可查看系统监控</div>
+  <div id="app" class="hidden">
+    <h1>📡 系统监控面板</h1>
+    <div class="sub">实时采集 MongoDB / Milvus / MinIO 运行状态与数据规模（管理员专属）</div>
+    <div id="demoBanner" class="demo-banner hidden">⚠️ 演示环境：以下为示例数据，并非真实运行指标。</div>
+    <div class="toolbar">
+      <button id="refreshBtn" class="ghost" onclick="loadMetrics()">↻ 刷新</button>
+      <span class="ts" id="ts">—</span>
+    </div>
+
+    <div class="cards" id="cards"></div>
+
+    <div class="panel">
+      <h2><span class="dot"></span>MongoDB 集合文档数</h2>
+      <div id="mongoRows"></div>
+    </div>
+
+    <div class="panel">
+      <h2><span class="dot"></span>Milvus 向量集合实体数</h2>
+      <div id="milvusRows"></div>
+    </div>
+
+    <div class="panel">
+      <h2><span class="dot"></span>MinIO 对象存储</h2>
+      <div id="minioRows"></div>
+    </div>
+
+    <div class="panel" id="errPanel">
+      <h2><span class="dot" style="background:#FF6B6B"></span>采集异常（fail-open，不影响其余）</h2>
+      <div id="errBox"></div>
+    </div>
+  </div>
+
+<script>
+function tk(){ return localStorage.getItem('kb_token') || ''; }
+function authHeaders(){ return { Authorization: 'Bearer ' + tk(), 'X-Auth-Token': tk() }; }
+
+function fmtUptime(s){
+  s = Math.max(0, s|0);
+  var d = Math.floor(s/86400); s -= d*86400;
+  var h = Math.floor(s/3600); s -= h*3600;
+  var m = Math.floor(s/60); s -= m*60;
+  var parts = [];
+  if (d) parts.push(d+'天'); if (h) parts.push(h+'时'); if (m) parts.push(m+'分'); parts.push(s+'秒');
+  return parts.join(' ');
+}
+
+function renderCards(m){
+  var users = m.mongo.users||0, docs = m.mongo.kb_documents||0;
+  var chunks = m.milvus[Object.keys(m.milvus)[0]] || 0;
+  var sessions = m.mongo.chat_sessions||0, msgs = m.mongo.chat_message||0;
+  var audits = m.mongo.kb_audit_logs||0, minio = m.minio.object_count||0;
+  var cards = [
+    ['运行时长', fmtUptime(m.uptime_seconds), ''],
+    ['注册用户', users, '人'],
+    ['知识文档', docs, '篇'],
+    ['向量切片', chunks, '条'],
+    ['会话数', sessions, ''],
+    ['消息数', msgs, ''],
+    ['审计记录', audits, ''],
+    ['MinIO 文件', minio, '个'],
+  ];
+  document.getElementById('cards').innerHTML = cards.map(function(c){
+    return '<div class="card"><div class="k">'+c[0]+'</div><div class="v">'+c[1]+' <small>'+c[2]+'</small></div></div>';
+  }).join('');
+}
+
+function renderRows(containerId, obj, withBars){
+  var box = document.getElementById(containerId);
+  var keys = Object.keys(obj||{});
+  if (!keys.length){ box.innerHTML = '<div class="row"><span class="name">（无数据）</span></div>'; return; }
+  var max = 1;
+  keys.forEach(function(k){ var v = obj[k]; if (typeof v === 'number' && v > max) max = v; });
+  box.innerHTML = keys.map(function(k){
+    var v = obj[k];
+    var err = (v === -1);
+    var pct = (typeof v === 'number' && v >= 0 && withBars) ? Math.max(2, Math.round(v/max*100)) : 0;
+    return '<div class="row"><div class="name" title="'+k+'">'+k+'</div>'+
+      '<div class="barwrap"><div class="bar" style="width:'+pct+'%"></div></div>'+
+      '<div class="num'+(err?' err':'')+'">'+(err?'不可达':v)+'</div></div>';
+  }).join('');
+}
+
+function renderErrors(errs){
+  var panel = document.getElementById('errPanel');
+  var box = document.getElementById('errBox');
+  if (!errs || !errs.length){ panel.classList.add('hidden'); return; }
+  panel.classList.remove('hidden');
+  box.innerHTML = '<div class="okline" style="margin-bottom:6px">共 '+errs.length+' 项异常：</div>' +
+    errs.map(function(e){ return '<div class="e">• '+e+'</div>'; }).join('');
+}
+
+function loadMetrics(){
+  document.getElementById('ts').textContent = '加载中…';
+  fetch('/api/admin/metrics', { headers: authHeaders() })
+    .then(function(r){ return r.json(); })
+    .then(function(j){
+      if (!j.ok){ document.getElementById('app').classList.add('hidden'); document.getElementById('lock').classList.remove('hidden'); document.getElementById('lock').textContent = '🔒 '+ (j.message||'仅管理员可查看'); return; }
+      var m = j.metrics || {};
+      renderCards(m);
+      renderRows('mongoRows', m.mongo, true);
+      renderRows('milvusRows', m.milvus, true);
+      renderRows('minioRows', { 'object_count': m.minio.object_count }, false);
+      renderErrors(m.errors);
+      document.getElementById('ts').textContent = '更新于 ' + new Date().toLocaleString('zh-CN');
+      document.getElementById('app').classList.remove('hidden');
+      document.getElementById('lock').classList.add('hidden');
+      document.getElementById('demoBanner').classList.toggle('hidden', !j.demo);
+    })
+    .catch(function(e){ document.getElementById('ts').textContent = '加载失败：'+e; });
+}
+
+/* 管理员专属：先校验身份 */
+fetch('/api/auth/me', { headers: authHeaders() })
+  .then(function(r){ return r.json(); })
+  .then(function(j){
+    if (j.ok && j.user && j.user.role === 'admin'){ loadMetrics(); }
+    else { document.getElementById('lock').classList.remove('hidden'); }
+  })
+  .catch(function(){ document.getElementById('lock').classList.remove('hidden'); });
+</script>
+</body>
+</html>

@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>审计日志 · 掌柜智库</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: "Microsoft YaHei", "PingFang SC", sans-serif; background: #f4f7fa; padding: 22px; }
+    .head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+    .head h2 { color: #0b1f33; font-size: 18px; }
+    .btn { border: none; cursor: pointer; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; }
+    .btn-blue { background: #12b0a4; color: #fff; }
+    .btn-blue:hover { background: #0fa79b; }
+    .card { background: #fff; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,.06); overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { background: #f7f8fa; color: #555; text-align: left; padding: 11px 14px; font-weight: 600; }
+    td { padding: 11px 14px; border-top: 1px solid #f0f0f0; color: #333; vertical-align: top; }
+    tr:hover td { background: #f7fbfa; }
+    .act { display: inline-block; padding: 2px 9px; border-radius: 12px; font-size: 11.5px; font-weight: 600; }
+    .a-role_change { background: #e4f6f3; color: #12b0a4; }
+    .a-tenant_change { background: #f0e6ff; color: #7a3ff0; }
+    .a-doc_import { background: #e6f7ee; color: #0a7a43; }
+    .a-doc_delete { background: #ffecec; color: #c0392b; }
+    .empty { text-align: center; padding: 40px; color: #999; }
+    .meta { color: #888; font-size: 12px; margin-top: 6px; line-height: 1.7; }
+    .meta b { color: #0a7a43; }
+    .detail { color: #666; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="head">
+    <h2>📜 审计日志</h2>
+    <button class="btn btn-blue" onclick="load()">↻ 刷新</button>
+  </div>
+
+  <div class="card">
+    <table>
+      <thead>
+        <tr><th style="width:14%">时间</th><th style="width:14%">动作</th><th style="width:18%">操作者</th><th style="width:18%">对象</th><th style="width:14%">租户</th><th>详情</th></tr>
+      </thead>
+      <tbody id="tbody"><tr><td colspan="6" class="empty">加载中…</td></tr></tbody>
+    </table>
+  </div>
+  <p class="meta">记录安全相关动作（改角色 / 改租户 / 导入 / 删除文档），便于追溯 · 仅管理员可见 · 当前用户：<b id="who">…</b></p>
+
+<script>
+const $ = id => document.getElementById(id);
+const ACT = {
+  role_change: '改角色', tenant_change: '改租户', doc_import: '导入文档', doc_delete: '删除文档'
+};
+function escapeHtml(t) { return String(t).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function cls(a){ return 'a-' + a; }
+
+async function api(path, opts) {
+  const tk = localStorage.getItem('kb_token') || '';
+  const r = await fetch(path, Object.assign({ headers: { Authorization: 'Bearer ' + tk, 'X-Auth-Token': tk } }, opts || {}));
+  let j = null; try { j = await r.json(); } catch (e) { j = {}; }
+  return { status: r.status, j };
+}
+
+async function load() {
+  const me = await api('/api/auth/me');
+  if (!me.j.ok) { $('tbody').innerHTML = '<tr><td colspan="6" class="empty">未登录</td></tr>'; return; }
+  $('who').textContent = me.j.user.nickname + '（' + (me.j.user.phone || '') + '）';
+  const res = await api('/api/admin/audit?limit=200');
+  if (!res.j.ok) {
+    const msg = res.status === 403 ? '仅管理员可查看审计日志' : (res.j.message || '加载失败');
+    $('tbody').innerHTML = '<tr><td colspan="6" class="empty">' + escapeHtml(msg) + '</td></tr>';
+    return;
+  }
+  const logs = res.j.logs || [];
+  if (!logs.length) { $('tbody').innerHTML = '<tr><td colspan="6" class="empty">暂无审计记录</td></tr>'; return; }
+  $('tbody').innerHTML = logs.map(l => {
+    const label = ACT[l.action] || l.action;
+    const d = l.detail || {};
+    const det = Object.keys(d).map(k => escapeHtml(k) + '=' + escapeHtml(JSON.stringify(d[k]))).join(' · ') || '—';
+    return '<tr>' +
+      '<td>' + escapeHtml(l.ts || '') + '</td>' +
+      '<td><span class="act ' + cls(l.action) + '">' + escapeHtml(label) + '</span></td>' +
+      '<td>' + escapeHtml(l.actor_id || '') + '</td>' +
+      '<td>' + escapeHtml(l.target_id || '') + '</td>' +
+      '<td>' + escapeHtml(l.tenant_id || 'default') + '</td>' +
+      '<td class="detail">' + det + '</td>' +
+      '</tr>';
+  }).join('');
+}
+load();
+</script>
+</body>
+</html>

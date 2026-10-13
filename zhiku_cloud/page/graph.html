@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>知识图谱 · 掌柜智库</title>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: "Microsoft YaHei", "PingFang SC", sans-serif; background: #f4f7fa; padding: 22px; }
+    .head { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+    .head h2 { color: #0b1f33; font-size: 18px; }
+    select, .btn { padding: 8px 14px; border-radius: 8px; font-size: 13px; border: 1px solid #e4eaf0; }
+    .btn { border: none; cursor: pointer; background: #12b0a4; color: #fff; font-weight: 600; }
+    .btn:disabled { opacity: .6; cursor: not-allowed; }
+    .btn.gray { background: #7c8da1; }
+    .chart { background: #fff; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,.06); height: 560px; }
+    .tip { color: #888; font-size: 12px; margin-top: 8px; }
+    .empty { text-align: center; padding: 60px; color: #999; }
+    .spin { display: inline-block; width: 14px; height: 14px; border: 2px solid #cfefea; border-top-color: #12b0a4; border-radius: 50%; animation: sp 0.8s linear infinite; vertical-align: -2px; margin-right: 6px; }
+    @keyframes sp { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="head">
+    <h2>🕸️ 知识图谱</h2>
+    <select id="docSel"><option value="">加载中…</option></select>
+    <button class="btn" id="viewBtn" onclick="view()">查看图谱</button>
+    <button class="btn gray" id="buildBtn" onclick="build()">⚡ 构建/刷新图谱</button>
+  </div>
+  <div class="chart" id="chart"><div class="empty">选择文档后点「查看图谱」（首次需先构建，约 20~60 秒）</div></div>
+  <p class="tip">节点大小 = 关联关系数量；可拖拽节点、滚轮缩放；连线标注关系。三元组由 LLM 从文档切片中抽取。</p>
+
+<script>
+const $ = id => document.getElementById(id);
+let chart = null;
+
+function escapeHtml(t) { return String(t).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+async function loadDocs() {
+  const tk = localStorage.getItem('kb_token') || '';
+  try {
+    const r = await fetch('/api/docs/list', { headers: { Authorization: 'Bearer ' + tk, 'X-Auth-Token': tk } });
+    const j = await r.json();
+    const docs = j.documents || [];
+    $('docSel').innerHTML = docs.map(d => `<option value="${escapeHtml(d.file_name)}">${escapeHtml(d.file_name)}</option>`).join('')
+      || '<option value="">（暂无文档，先去导入）</option>';
+  } catch (e) {}
+}
+
+function render(graph) {
+  const nodes = graph.nodes || [], edges = graph.edges || [];
+  if (!nodes.length) { $('chart').innerHTML = '<div class="empty">图谱为空，先点「构建/刷新图谱」</div>'; return; }
+  if (!chart) chart = echarts.init($('chart'));
+  chart.setOption({
+    tooltip: { formatter: p => p.dataType === 'edge' ? `${p.data.source} —[${p.data.relation}]→ ${p.data.target}` : p.name },
+    series: [{
+      type: 'graph', layout: 'force', roam: true, draggable: true,
+      force: { repulsion: 260, edgeLength: [60, 140], gravity: 0.08 },
+      label: { show: true, fontSize: 12, color: '#1a2a4a' },
+      edgeLabel: { show: true, fontSize: 10, color: '#888', formatter: p => p.data.relation },
+      edgeSymbol: ['none', 'arrow'], edgeSymbolSize: 7,
+      lineStyle: { color: '#b0c4de', width: 1.2, curveness: 0.12 },
+      itemStyle: { color: '#1aa7ff', borderColor: '#fff', borderWidth: 2, shadowBlur: 8, shadowColor: 'rgba(26,167,255,.35)' },
+      emphasis: { itemStyle: { color: '#5b7cfa' } },
+      data: nodes,
+      links: edges.map(e => ({ source: e.source, target: e.target, relation: e.relation }))
+    }]
+  }, true);
+}
+
+async function view() {
+  const file = $('docSel').value;
+  const tk = localStorage.getItem('kb_token') || '';
+  $('chart').innerHTML = '<div class="empty"><span class="spin"></span>加载中…</div>';
+  try {
+    const r = await fetch('/api/graph/get?file_title=' + encodeURIComponent(file), { headers: { Authorization: 'Bearer ' + tk, 'X-Auth-Token': tk } });
+    const j = await r.json();
+    render(j.graph || {});
+  } catch (e) { $('chart').innerHTML = '<div class="empty">网络异常</div>'; }
+}
+
+async function build() {
+  const file = $('docSel').value;
+  if (!file) { alert('请先选择文档'); return; }
+  const tk = localStorage.getItem('kb_token') || '';
+  $('buildBtn').disabled = true;
+  $('buildBtn').textContent = '⏳ 构建中（20~60s）…';
+  $('chart').innerHTML = '<div class="empty"><span class="spin"></span>LLM 正在从文档切片中抽取实体关系…</div>';
+  try {
+    const r = await fetch('/api/graph/build', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tk, 'X-Auth-Token': tk },
+      body: JSON.stringify({ file_title: file })
+    });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.message || '构建失败');
+    await view();
+  } catch (e) {
+    $('chart').innerHTML = '<div class="empty">❌ ' + escapeHtml(e.message) + '</div>';
+  } finally {
+    $('buildBtn').disabled = false;
+    $('buildBtn').textContent = '⚡ 构建/刷新图谱';
+  }
+}
+
+loadDocs();
+</script>
+</body>
+</html>

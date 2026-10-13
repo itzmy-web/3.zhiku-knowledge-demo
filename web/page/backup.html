@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>掌柜智库 · 备份与恢复</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: "Microsoft YaHei", "PingFang SC", sans-serif; background: #E9EDF3; color: #1E2530; padding: 24px; }
+  h1 { font-size: 20px; font-weight: 800; margin-bottom: 4px; }
+  .sub { color: #7A8499; font-size: 12.5px; margin-bottom: 18px; line-height: 1.6; }
+  .panel { background: #fff; border: 1px solid rgba(60,60,67,.10); border-radius: 14px; padding: 18px; margin-bottom: 18px; box-shadow: 0 4px 14px rgba(30,37,48,.06); }
+  .panel h2 { font-size: 15px; font-weight: 800; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+  .panel h2 .dot { width: 8px; height: 8px; border-radius: 50%; background: #5B9DFF; }
+  label { font-size: 13px; color: #3A4252; font-weight: 600; }
+  input[type=text] { font-family: inherit; width: 240px; padding: 9px 12px; border: 1px solid rgba(60,60,67,.2); border-radius: 10px; font-size: 13.5px; margin: 6px 10px 6px 0; }
+  button { font-family: inherit; cursor: pointer; border: none; border-radius: 10px; padding: 9px 16px; font-size: 13.5px; font-weight: 600; background: #5B9DFF; color: #fff; box-shadow: 0 4px 12px rgba(91,157,255,.30); }
+  button:hover { background: #4A8BF0; }
+  button.ghost { background: #fff; color: #3D74E0; border: 1px solid rgba(61,116,224,.3); box-shadow: none; }
+  button.danger { background: #FF6B6B; box-shadow: 0 4px 12px rgba(255,107,107,.30); }
+  .row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+  .msg { font-size: 13px; margin-top: 10px; padding: 10px 12px; border-radius: 10px; }
+  .msg.ok { background: #EAF7F0; color: #2E9E6B; }
+  .msg.err { background: #FFF3F3; color: #B23B3B; }
+  .msg.info { background: #EEF3FB; color: #3D74E0; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid rgba(60,60,67,.08); }
+  th { color: #7A8499; font-weight: 700; }
+  td.mono { font-family: Consolas, monospace; }
+  .warn { background: #FFF8E8; border: 1px solid rgba(230,180,60,.4); border-radius: 10px; padding: 10px 12px; color: #9A6B00; font-size: 12.5px; margin-bottom: 12px; }
+  .lock { text-align: center; padding: 60px 20px; color: #7A8499; font-size: 15px; }
+  .hidden { display: none; }
+  .demo-banner { background:#FFF8E8; border:1px solid rgba(230,180,60,.45); color:#9A6B00; border-radius:10px; padding:10px 12px; font-size:12.5px; margin-bottom:14px; }
+  .ck { margin: 0 8px 0 0; }
+  /* 开关（定时自动备份） */
+  .switch { position: relative; display: inline-block; width: 46px; height: 26px; vertical-align: middle; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider { position: absolute; cursor: pointer; inset: 0; background: #C7CEDB; border-radius: 26px; transition: .2s; }
+  .slider:before { content: ""; position: absolute; height: 20px; width: 20px; left: 3px; bottom: 3px; background: #fff; border-radius: 50%; transition: .2s; box-shadow: 0 1px 3px rgba(0,0,0,.25); }
+  .switch input:checked + .slider { background: #5B9DFF; }
+  .switch input:checked + .slider:before { transform: translateX(20px); }
+  .auto-state { font-size: 12.5px; color: #7A8499; margin-top: 10px; }
+  .auto-state b { color: #1E2530; }
+</style>
+</head>
+<body>
+  <div id="lock" class="lock hidden">🔒 仅管理员可操作备份与恢复</div>
+  <div id="app" class="hidden">
+    <h1>💾 备份与恢复</h1>
+    <div class="sub">全量备份落盘到部署服务器 <code>./backups/&lt;时间戳&gt;_&lt;标签&gt;/</code>，包含 MongoDB 全部集合、Milvus 向量集合、MinIO 原始文件。</div>
+    <div id="demoBanner" class="demo-banner hidden">⚠️ 演示环境：备份/恢复为模拟操作，不会真正写入数据。</div>
+
+    <div class="panel">
+      <h2><span class="dot"></span>立即备份</h2>
+      <div class="row">
+        <label>备份标签</label>
+        <input type="text" id="bkLabel" placeholder="如 v1 / 2026春节前" maxlength="20">
+        <button onclick="doBackup()">📦 执行备份</button>
+      </div>
+      <div id="bkMsg"></div>
+    </div>
+
+    <div class="panel">
+      <h2><span class="dot"></span>已有备份</h2>
+      <div class="row"><button class="ghost" onclick="loadBackups()">↻ 刷新列表</button></div>
+      <div id="bkList"></div>
+    </div>
+
+    <div class="panel">
+      <h2><span class="dot" style="background:#2E9E6B"></span>定时自动备份</h2>
+      <div class="row">
+        <label class="switch"><input type="checkbox" id="autoOn"><span class="slider"></span></label>
+        <label style="margin-left:6px">启用自动备份</label>
+        <label style="margin-left:14px">间隔</label>
+        <input type="text" id="autoHours" value="24" maxlength="4" style="width:70px">
+        <label>小时 / 次</label>
+        <button onclick="saveAuto()">保存设置</button>
+      </div>
+      <div class="auto-state" id="autoState">加载中…</div>
+    </div>
+
+    <div class="panel">
+      <h2><span class="dot" style="background:#FF6B6B"></span>从备份恢复</h2>
+      <div class="warn">⚠️ 恢复为破坏性操作：Milvus 目标集合会被先清空再重新插入。请确认目录无误，并优先在测试环境验证。</div>
+      <div class="row">
+        <label>备份目录</label>
+        <input type="text" id="rsDir" placeholder="如 backups/20260101_120000_v1 或绝对路径" style="width:360px">
+      </div>
+      <div class="row">
+        <label>恢复组件</label>
+        <span><input type="checkbox" class="ck" id="rsMongo" checked> MongoDB</span>
+        <span><input type="checkbox" class="ck" id="rsMilvus" checked> Milvus</span>
+        <span><input type="checkbox" class="ck" id="rsMinio" checked> MinIO</span>
+      </div>
+      <div class="row">
+        <button class="danger" onclick="doRestore()">♻️ 执行恢复</button>
+      </div>
+      <div id="rsMsg"></div>
+    </div>
+  </div>
+
+<script>
+function tk(){ return localStorage.getItem('kb_token') || ''; }
+function authHeaders(){ return { Authorization: 'Bearer ' + tk(), 'X-Auth-Token': tk(), 'Content-Type': 'application/json' }; }
+
+function setMsg(id, text, kind){
+  var el = document.getElementById(id);
+  if (!text){ el.innerHTML = ''; el.className = 'msg'; return; }
+  el.className = 'msg ' + (kind||'info');
+  el.textContent = text;
+}
+
+function doBackup(){
+  setMsg('bkMsg', '备份中…（Mongo/Milvus/MinIO 全量导出，可能耗时数秒至数十秒）', 'info');
+  var label = document.getElementById('bkLabel').value.trim();
+  fetch('/api/admin/backup', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ label: label }) })
+    .then(function(r){ return r.json(); })
+    .then(function(j){
+      if (!j.ok){ setMsg('bkMsg', '✗ ' + (j.message||'备份失败'), 'err'); return; }
+      setMsg('bkMsg', '✓ ' + j.message + '　目录：' + j.dir, 'ok');
+      loadBackups();
+    })
+    .catch(function(e){ setMsg('bkMsg', '✗ 请求失败：' + e, 'err'); });
+}
+
+function loadBackups(){
+  fetch('/api/admin/backups', { headers: authHeaders() })
+    .then(function(r){ return r.json(); })
+    .then(function(j){
+      var box = document.getElementById('bkList');
+      if (!j.ok){ box.innerHTML = '<div class="msg err">✗ ' + (j.message||'列举失败') + '</div>'; return; }
+      var list = j.backups || [];
+      if (!list.length){ box.innerHTML = '<div class="msg info">暂无备份，先执行一次备份吧。</div>'; return; }
+      var rows = list.map(function(b){
+        var comp = b.components || {};
+        var mongo = comp.mongo ? Object.keys(comp.mongo).length + ' 集合' : '-';
+        var milvus = comp.milvus ? Object.values(comp.milvus).filter(function(v){return typeof v==='number';}).reduce(function(a,c){return a+c;},0) + ' 条' : '-';
+        var minio = (comp.minio!==undefined && typeof comp.minio==='number') ? comp.minio + ' 文件' : '-';
+        return '<tr><td class="mono">'+b.name+'</td><td>'+ (b.created_at||'-') +'</td><td>'+mongo+'</td><td>'+milvus+'</td><td>'+minio+'</td></tr>';
+      }).join('');
+      box.innerHTML = '<table><thead><tr><th>目录</th><th>创建时间</th><th>Mongo</th><th>Milvus</th><th>MinIO</th></tr></thead><tbody>'+rows+'</tbody></table>';
+    })
+    .catch(function(e){ document.getElementById('bkList').innerHTML = '<div class="msg err">✗ 请求失败：'+e+'</div>'; });
+}
+
+function loadAuto(){
+  fetch('/api/admin/backup/auto', { headers: authHeaders() })
+    .then(function(r){ return r.json(); })
+    .then(function(j){
+      if (!j.ok){ setMsg('rsMsg','', null); return; }
+      var st = j.state || {};
+      document.getElementById('autoOn').checked = !!st.enabled;
+      document.getElementById('autoHours').value = st.interval_hours || 24;
+      var next = st.next_run ? new Date(st.next_run*1000).toLocaleString('zh-CN') : '—';
+      document.getElementById('autoState').innerHTML =
+        '当前状态：<b>'+(st.enabled?'已启用':'已关闭')+'</b>　间隔：<b>'+(st.interval_hours||24)+' 小时</b>　' +
+        '上次执行：<b>'+(st.last_run||'—')+'</b>　下次执行：<b>'+next+'</b>';
+    })
+    .catch(function(e){ document.getElementById('autoState').textContent = '加载失败：'+e; });
+}
+
+function saveAuto(){
+  var enabled = document.getElementById('autoOn').checked;
+  var hours = parseInt(document.getElementById('autoHours').value, 10) || 24;
+  setMsg('rsMsg', '保存中…', 'info');
+  fetch('/api/admin/backup/auto', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ enabled: enabled, interval_hours: hours }) })
+    .then(function(r){ return r.json(); })
+    .then(function(j){
+      if (!j.ok){ setMsg('rsMsg', '✗ ' + (j.message||'保存失败'), 'err'); return; }
+      setMsg('rsMsg', '✓ 自动备份设置已保存', 'ok');
+      loadAuto();
+    })
+    .catch(function(e){ setMsg('rsMsg', '✗ 请求失败：'+e, 'err'); });
+}
+
+function doRestore(){
+  if (!confirm('确认从所选备份恢复？Milvus 目标集合将被先清空再插入，操作不可自动撤销。')) return;
+  var dir = document.getElementById('rsDir').value.trim();
+  if (!dir){ setMsg('rsMsg', '✗ 请填写备份目录', 'err'); return; }
+  var comps = [];
+  if (document.getElementById('rsMongo').checked) comps.push('mongo');
+  if (document.getElementById('rsMilvus').checked) comps.push('milvus');
+  if (document.getElementById('rsMinio').checked) comps.push('minio');
+  setMsg('rsMsg', '恢复中…', 'info');
+  fetch('/api/admin/restore', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ dir: dir, components: comps }) })
+    .then(function(r){ return r.json(); })
+    .then(function(j){
+      if (!j.ok){ setMsg('rsMsg', '✗ ' + (j.message||'恢复失败'), 'err'); return; }
+      var r0 = j.restored || {};
+      setMsg('rsMsg', '✓ 恢复完成：' + JSON.stringify(r0), 'ok');
+    })
+    .catch(function(e){ setMsg('rsMsg', '✗ 请求失败：' + e, 'err'); });
+}
+
+/* 管理员专属：先校验身份 */
+fetch('/api/auth/me', { headers: authHeaders() })
+  .then(function(r){ return r.json(); })
+  .then(function(j){
+    if (j.ok && j.user && j.user.role === 'admin'){ document.getElementById('app').classList.remove('hidden'); document.getElementById('demoBanner').classList.toggle('hidden', !j.demo); loadBackups(); loadAuto(); }
+    else { document.getElementById('lock').classList.remove('hidden'); }
+  })
+  .catch(function(){ document.getElementById('lock').classList.remove('hidden'); });
+</script>
+</body>
+</html>

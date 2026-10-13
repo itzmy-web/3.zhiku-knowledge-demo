@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>知识库空间 · 掌柜智库</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: "Microsoft YaHei", "PingFang SC", sans-serif; background: #f4f7fa; padding: 22px; }
+    .head { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+    .head h2 { color: #0b1f33; font-size: 18px; margin-right: auto; }
+    input[type=text] { padding: 8px 12px; border: 1px solid #e4eaf0; border-radius: 8px; font-size: 13px; }
+    .btn { border: none; cursor: pointer; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; }
+    .btn-blue { background: #12b0a4; color: #fff; }
+    .btn-gray { background: #7c8da1; color: #fff; }
+    .grid { display: flex; gap: 14px; flex-wrap: wrap; }
+    .card2 { background: #fff; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,.06); padding: 16px; width: calc(50% - 7px); min-width: 340px; }
+    .card2 h3 { font-size: 15px; color: #0b1f33; display: flex; align-items: center; gap: 8px; }
+    .card2 h3 .tag { font-size: 10px; background: #e4f6f3; color: #0f8593; padding: 2px 8px; border-radius: 8px; font-weight: 400; }
+    .card2 .row { display: flex; gap: 8px; margin: 10px 0; flex-wrap: wrap; align-items: center; }
+    .card2 select { flex: 1; min-width: 180px; padding: 7px 10px; border: 1px solid #e4eaf0; border-radius: 8px; font-size: 13px; }
+    .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+    .chip { display: inline-flex; align-items: center; gap: 4px; background: #f4f8f8; border-radius: 10px; padding: 3px 10px; font-size: 12px; color: #333; }
+    .chip button { border: none; background: transparent; color: #c0392b; cursor: pointer; font-size: 12px; }
+    .members { font-size: 12px; color: #888; margin-top: 8px; }
+    .code { font-family: monospace; background: #f4f8f8; padding: 2px 8px; border-radius: 6px; color: #0f8593; font-weight: 600; }
+    .del { color: #c0392b; font-size: 12px; cursor: pointer; background: none; border: none; margin-left: auto; }
+    .empty { text-align: center; padding: 40px; color: #999; }
+    .meta { color: #888; font-size: 12px; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <div class="head">
+    <h2>🗂️ 知识库空间</h2>
+    <input type="text" id="newName" placeholder="新空间名称，如：设备手册库" style="width:200px">
+    <button class="btn btn-blue" onclick="createSpace()">＋ 新建空间</button>
+    <input type="text" id="joinCode" placeholder="输入邀请码加入协作空间" style="width:210px">
+    <button class="btn btn-gray" onclick="joinSpace()">加入</button>
+  </div>
+  <div class="grid" id="grid"><div class="empty" style="width:100%">加载中…</div></div>
+  <p class="meta">空间 = 文档白名单 + 成员列表。在「💬 智能问答」右上角选择空间后，检索只在该空间包含的文档内进行。<br>所有者可「获取邀请码」发给同事，对方凭码加入后即可共享空间内文档（协作问答）。</p>
+
+<script>
+const $ = id => document.getElementById(id);
+function escapeHtml(t) { return String(t).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function opt() { return { headers: { Authorization: 'Bearer ' + (localStorage.getItem('kb_token')||''), 'X-Auth-Token': localStorage.getItem('kb_token')||'' } }; }
+
+async function load() {
+  try {
+    const r = await fetch('/api/spaces', opt());
+    const j = await r.json();
+    const spaces = j.spaces || [];
+    if (!spaces.length) { $('grid').innerHTML = '<div class="empty" style="width:100%">还没有空间，先「新建空间」或用邀请码加入</div>'; return; }
+    $('grid').innerHTML = spaces.map(s => `
+      <div class="card2">
+        <h3>🗂️ ${escapeHtml(s.name)} ${s.is_owner ? '<span class="tag">我是所有者</span>' : '<span class="tag">协作</span>'}
+            ${s.is_owner ? `<button class="del" onclick="delSpace('${s.space_id}')">删除空间</button>` : ''}</h3>
+        <div class="row">
+          <select id="doc-${s.space_id}">${'<option value="">选择要加入空间的文档…</option>'}</select>
+          <button class="btn btn-blue" style="padding:7px 12px" onclick="addDoc('${s.space_id}')">加入</button>
+        </div>
+        <div class="chips" id="docs-${s.space_id}">
+          ${(s.file_titles||[]).map(t => `<span class="chip">${escapeHtml(t)}${s.is_owner ? `<button onclick="rmDoc('${s.space_id}','${escapeHtml(t)}')">✕</button>` : ''}</span>`).join('') || '<span style="font-size:12px;color:#bbb">暂无文档，从下拉选择加入</span>'}
+        </div>
+        <div class="members">👥 成员 ${s.members.length} 人　·
+          ${s.is_owner ? `<button class="btn btn-gray" style="padding:4px 10px;font-size:12px" onclick="getCode('${s.space_id}')">获取邀请码</button> <span class="code" id="code-${s.space_id}"></span>` : ''}
+        </div>
+      </div>`).join('');
+    // 填充文档下拉
+    const dr = await fetch('/api/docs/list', opt());
+    const dj = await dr.json();
+    const docs = dj.documents || [];
+    for (const s of spaces) {
+      const sel = $('doc-' + s.space_id);
+      if (sel) sel.innerHTML = '<option value="">选择要加入空间的文档…</option>' +
+        docs.map(d => `<option value="${escapeHtml(d.file_name)}">${escapeHtml(d.file_name)}</option>`).join('');
+    }
+  } catch (e) { $('grid').innerHTML = '<div class="empty" style="width:100%">网络异常</div>'; }
+}
+
+async function createSpace() {
+  const name = $('newName').value.trim();
+  if (!name) { alert('请输入空间名称'); return; }
+  const r = await fetch('/api/spaces', { method:'POST', headers:{'Content-Type':'application/json', ...opt()}, body: JSON.stringify({name}) });
+  const j = await r.json();
+  if (!j.ok) alert(j.message || '创建失败');
+  $('newName').value = '';
+  load();
+}
+
+async function joinSpace() {
+  const code = $('joinCode').value.trim();
+  if (!code) { alert('请输入邀请码'); return; }
+  const r = await fetch('/api/spaces/join', { method:'POST', headers:{'Content-Type':'application/json', ...opt()}, body: JSON.stringify({code}) });
+  const j = await r.json();
+  alert(j.ok ? `已加入空间「${j.space_name}」` : (j.message || '加入失败'));
+  $('joinCode').value = '';
+  load();
+}
+
+async function delSpace(id) {
+  if (!confirm('确定删除该空间？（不影响文档本身）')) return;
+  await fetch('/api/spaces/' + id, { method:'DELETE', headers: opt() });
+  load();
+}
+
+async function addDoc(id) {
+  const v = $('doc-' + id).value;
+  if (!v) { alert('请选择文档'); return; }
+  const r = await fetch(`/api/spaces/${id}/docs`, { method:'POST', headers:{'Content-Type':'application/json', ...opt()}, body: JSON.stringify({file_title: v}) });
+  const j = await r.json();
+  if (!j.ok) alert(j.message || '添加失败');
+  load();
+}
+
+async function rmDoc(id, title) {
+  await fetch(`/api/spaces/${id}/docs?file_title=${encodeURIComponent(title)}`, { method:'DELETE', headers: opt() });
+  load();
+}
+
+async function getCode(id) {
+  const r = await fetch(`/api/spaces/${id}/invite`, { method:'POST', headers: opt() });
+  const j = await r.json();
+  if (j.ok) $('code-' + id).textContent = j.invite_code;
+  else alert(j.message || '获取失败');
+}
+
+load();
+</script>
+</body>
+</html>

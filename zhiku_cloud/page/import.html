@@ -1,0 +1,385 @@
+<!--&lt;!&ndash;知识库导入&ndash;&gt;#http://127.0.0.1:8000/import.html-->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+<script>/* 登录守卫：每次打开网址都必须先经过登录页（一次性入场券机制） */
+(function(){try{
+  if(window.self!==window.top) return;  /* iframe 由工作台统一把关 */
+  if(sessionStorage.getItem('kb_just_auth')==='1'){ sessionStorage.removeItem('kb_just_auth'); return; }
+  location.replace('/login.html');
+}catch(e){}})();</script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文件导入服务</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f7fa;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+        .container {
+            width: 100%;
+            max-width: 800px;
+            background-color: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #0b1f33;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .upload-area {
+            border: 2px dashed #12b0a4;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            margin-bottom: 20px;
+        }
+        .upload-area:hover {
+            background-color: #eaf7f5;
+        }
+        .upload-icon {
+            font-size: 48px;
+            color: #12b0a4;
+            margin-bottom: 10px;
+        }
+        .file-input {
+            display: none;
+        }
+        .btn {
+            background-color: #12b0a4;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        .btn:hover {
+            background-color: #0fa79b;
+        }
+        .btn:disabled {
+            background-color: #bdc3c7;
+            cursor: not-allowed;
+        }
+        .file-list {
+            margin-top: 30px;
+        }
+        .file-item {
+            background-color: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .file-info {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            margin-right: 20px;
+        }
+        .file-name {
+            font-weight: 600;
+            color: #333;
+        }
+        .file-size {
+            font-size: 12px;
+            color: #7f8c8d;
+            margin-top: 4px;
+        }
+        .status-badge {
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: bold;
+            color: white;
+            min-width: 80px;
+            text-align: center;
+        }
+        .status-uploading { background-color: #f39c12; }
+        .status-processing { background-color: #12b0a4; }
+        .status-completed { background-color: #2ecc71; }
+        .status-error { background-color: #e74c3c; }
+        
+        /* 简单的进度条 */
+        .progress-bar-container {
+            width: 100%;
+            height: 4px;
+            background-color: #f0f0f0;
+            margin-top: 8px;
+            border-radius: 2px;
+            overflow: hidden;
+            display: none;
+        }
+        .progress-bar {
+            height: 100%;
+            background-color: #f39c12;
+            width: 0%;
+            transition: width 0.3s, background-color 0.3s;
+        }
+
+        /* 任务日志（可展开/收起） */
+        .log-details {
+            margin-top: 8px;
+            font-size: 12px;
+            color: #7f8c8d;
+        }
+        .log-details summary {
+            cursor: pointer;
+            user-select: none;
+            color: #6c7a89;
+        }
+        .log-list {
+            margin: 6px 0 0 16px;
+            padding: 0;
+        }
+        .log-list li {
+            margin: 2px 0;
+            line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>📄 知识库文件导入</h1>
+    
+    <div class="upload-area" id="dropZone" onclick="document.getElementById('fileInput').click()">
+        <div class="upload-icon">☁️</div>
+        <p>点击或拖拽文件到此处 (PDF / Word / PPT / MD)</p>
+        <input type="file" id="fileInput" class="file-input" multiple accept=".pdf,.md,.docx,.pptx">
+    </div>
+
+    <div id="fileList" class="file-list">
+        <!-- 文件列表将在这里生成 -->
+    </div>
+</div>
+
+<script>
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const fileList = document.getElementById('fileList');
+    
+    // 模拟后端API地址
+    const API_BASE = 'http://127.0.0.1:8000';
+
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.style.backgroundColor = '#ecf6fd';
+    });
+
+    dropZone.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        dropZone.style.backgroundColor = '';
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.style.backgroundColor = '';
+        handleFiles(e.dataTransfer.files);
+    });
+
+    fileInput.addEventListener('change', (e) => {
+        handleFiles(e.target.files);
+    });
+
+    function handleFiles(files) {
+        Array.from(files).forEach(uploadFile);
+    }
+
+    function updateProgressBar(bar, percentage) {
+        bar.style.width = percentage + '%';
+        if (percentage >= 100) {
+            bar.style.backgroundColor = '#3498db'; // 蓝色
+        } else {
+            bar.style.backgroundColor = '#f39c12'; // 橘红色
+        }
+    }
+
+    async function uploadFile(file) {
+        // 创建文件项UI
+        const id = 'file-' + Math.random().toString(36).substr(2, 9);
+        const html = `
+            <div class="file-item" id="${id}">
+                <div class="file-info">
+                    <span class="file-name">${file.name}</span>
+                    <span class="file-size">${(file.size / 1024).toFixed(2)} KB</span>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar"></div>
+                    </div>
+                    <details class="log-details">
+                        <summary>日志（点击展开）</summary>
+                        <ul class="log-list"></ul>
+                    </details>
+                </div>
+                <div class="status-badge status-uploading">上传中...</div>
+            </div>
+        `;
+        fileList.insertAdjacentHTML('afterbegin', html);
+        const itemEl = document.getElementById(id);
+        const statusBadge = itemEl.querySelector('.status-badge');
+        const progressBar = itemEl.querySelector('.progress-bar');
+        const progressContainer = itemEl.querySelector('.progress-bar-container');
+        const logDetails = itemEl.querySelector('.log-details');
+        const logSummary = itemEl.querySelector('.log-details summary');
+        const logListEl = itemEl.querySelector('.log-list');
+
+        // 构建FormData
+        const formData = new FormData();
+        formData.append('files', file);
+
+        try {
+            // 1. 上传文件
+            progressContainer.style.display = 'block';
+            // 模拟上传进度
+            updateProgressBar(progressBar, 50);
+
+            const authHeaders = {};
+            try {
+                const tk = localStorage.getItem('kb_token');
+                if (tk) { authHeaders['Authorization'] = 'Bearer ' + tk; authHeaders['X-Auth-Token'] = tk; }
+            } catch (e) {}
+            const response = await fetch(`${API_BASE}/upload`, {
+                method: 'POST',
+                headers: authHeaders,
+                body: formData
+            });
+
+            if (!response.ok) throw new Error('Upload failed');
+            
+            const result = await response.json();
+            const taskId = result.task_ids[0]; // 假设一次传一个或取第一个
+
+            // 上传完成，进入处理中，进度固定为30%
+            updateProgressBar(progressBar, 30);
+            statusBadge.textContent = '处理中...';
+            statusBadge.className = 'status-badge status-processing';
+
+            // 2. 轮询状态
+            pollStatus(taskId, itemEl);
+
+        } catch (error) {
+            console.error(error);
+            statusBadge.textContent = '失败';
+            statusBadge.className = 'status-badge status-error';
+        }
+    }
+
+    function normalizeDoneLog(text) {
+        // 后端可能返回中文节点名，也可能已拼接“已完成”
+        if (typeof text !== 'string') return String(text);
+        return text.endsWith('已完成') ? text : `${text}已完成`;
+    }
+
+    function normalizeRunningLog(text) {
+        // 后端可能返回中文节点名，也可能已拼接“正在进行.../处理中...”
+        if (typeof text !== 'string') return String(text);
+        if (text.startsWith('正在进行')) return text.endsWith('...') ? text : `${text}...`;
+        return `正在进行${text}...`;
+    }
+
+    function renderLogs(itemEl, doneList, runningList) {
+        const logSummary = itemEl.querySelector('.log-details summary');
+        const logListEl = itemEl.querySelector('.log-list');
+        const logDetails = itemEl.querySelector('.log-details');
+
+        const done = Array.isArray(doneList) ? doneList : [];
+        const running = Array.isArray(runningList) ? runningList : [];
+
+        // 更新 summary（即使收起也能看到进度）
+        logSummary.textContent = `日志（已完成${done.length}，进行中${running.length}，点击展开）`;
+
+        // 清空并重建列表
+        logListEl.innerHTML = '';
+        const lines = [
+            ...done.map(normalizeDoneLog),
+            ...running.map(normalizeRunningLog),
+        ];
+
+        if (lines.length === 0) {
+            const li = document.createElement('li');
+            li.textContent = '暂无日志';
+            logListEl.appendChild(li);
+        } else {
+            for (const line of lines) {
+                const li = document.createElement('li');
+                li.textContent = line;
+                logListEl.appendChild(li);
+            }
+        }
+
+        // 如果没有任何日志，默认收起；否则保持用户选择
+        if (lines.length === 0) {
+            logDetails.open = false;
+        }
+    }
+
+    function pollStatus(taskId, itemEl) {
+        const statusBadge = itemEl.querySelector('.status-badge');
+        const progressBar = itemEl.querySelector('.progress-bar');
+
+        /* SSE 实时进度：EventSource 订阅后端推送（每秒一条），失败自动降级为轮询 */
+        let pollInterval = null;
+        function fallbackPoll() {
+            if (pollInterval) return;
+            pollInterval = setInterval(async () => {
+                try {
+                    const res = await fetch(`${API_BASE}/status/${taskId}`);
+                    handleData(await res.json());
+                } catch (e) { console.error('Polling error', e); }
+            }, 2000);
+        }
+        function handleData(data) {
+            renderLogs(itemEl, data.done_list, data.running_list);
+            /* 进度条 = 已完成节点数 / 7 阶段 */
+            const done = Array.isArray(data.done_list) ? data.done_list.length : 0;
+            const pct = data.status === 'completed' ? 100 : Math.min(95, Math.max(15, Math.round(done / 7 * 100)));
+            if (data.status === 'completed') {
+                statusBadge.textContent = '已完成';
+                statusBadge.className = 'status-badge status-completed';
+                updateProgressBar(progressBar, 100);
+                if (pollInterval) clearInterval(pollInterval);
+                if (window.__es && window.__es[taskId]) { window.__es[taskId].close(); delete window.__es[taskId]; }
+                /* 数字人主动播报：导入完成（跨 iframe 调用工作台层的 DHSpeak） */
+                try {
+                    const fname = (itemEl.querySelector('.file-name') || {}).textContent || '文件';
+                    if (!window.__dhAnnounced) window.__dhAnnounced = new Set();
+                    if (!window.__dhAnnounced.has(taskId)) {
+                        window.__dhAnnounced.add(taskId);
+                        const dh = window.DHSpeak || (window.parent && window.parent.DHSpeak);
+                        dh && dh('《' + fname + '》已经导入完成，现在可以去智能问答页提问啦！');
+                    }
+                } catch (e) {}
+            } else if (data.status === 'processing') {
+                statusBadge.textContent = '处理中...';
+                updateProgressBar(progressBar, pct);
+            } else if (data.status === 'failed') {
+                statusBadge.textContent = '失败';
+                statusBadge.className = 'status-badge status-error';
+                if (pollInterval) clearInterval(pollInterval);
+                if (window.__es && window.__es[taskId]) { window.__es[taskId].close(); delete window.__es[taskId]; }
+            }
+        }
+        try {
+            window.__es = window.__es || {};
+            const es = new EventSource(`${API_BASE}/api/import/progress/${taskId}`);
+            window.__es[taskId] = es;
+            es.onmessage = ev => handleData(JSON.parse(ev.data));
+            es.onerror = () => { es.close(); delete window.__es[taskId]; fallbackPoll(); };
+        } catch (e) { fallbackPoll(); }
+    }
+</script>
+
+</body>
+</html>

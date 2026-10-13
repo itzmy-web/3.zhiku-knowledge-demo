@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>掌柜智库 · 安全与合规</title>
+<meta name="description" content="掌柜智库安全与合规：私有化部署数据完全留在你自己的服务器；演示站为共享环境不持久化真实资料；权限隔离、加密传输、审计日志与企业合规说明。" />
+<meta property="og:title" content="掌柜智库 · 安全与合规" />
+<meta property="og:type" content="website" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
+<style>
+  :root{--bg:#F2F2F7;--surface:#FFFFFF;--surface-2:#F2F2F7;--hairline:rgba(60,60,67,.12);
+    --txt:#1C1C1E;--sub:#8E8E93;--muted:#AEAEB2;--acc:#007AFF;--acc-soft:rgba(0,122,255,.10);
+    --ok:#34C759;--warn:#FF9500;--radius:18px;--shadow:0 14px 40px rgba(0,0,0,.08);
+    --font:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC","Microsoft YaHei",sans-serif;}
+  *{box-sizing:border-box} html,body{margin:0}
+  body{font-family:var(--font);color:var(--txt);background:var(--bg);-webkit-font-smoothing:antialiased;line-height:1.6}
+  a{color:var(--acc);text-decoration:none} a:hover{text-decoration:underline}
+  .skip{position:absolute;left:-999px;top:0;background:var(--acc);color:#fff;padding:10px 16px;border-radius:0 0 10px 0;z-index:99}
+  .skip:focus{left:0} :focus-visible{outline:3px solid rgba(0,122,255,.55);outline-offset:2px;border-radius:6px}
+  .topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;padding:14px 28px;
+    background:rgba(242,242,247,.82);backdrop-filter:saturate(180%) blur(14px);border-bottom:1px solid var(--hairline)}
+  .topbar .brand{display:flex;align-items:center;gap:11px}
+  .topbar .logo{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;background:#1C1C1E;font-size:20px}
+  .topbar .name{font-weight:700;font-size:17px} .topbar .name span{background:linear-gradient(90deg,#007AFF,#5856D6);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .topbar .right{display:flex;gap:10px}
+  .topbar .back{font-size:13px;font-weight:600;color:var(--acc);border:1px solid rgba(0,122,255,.3);padding:8px 14px;border-radius:11px}
+  .topbar .back:hover{background:var(--acc-soft);text-decoration:none}
+  .wrap{max-width:960px;margin:0 auto;padding:40px 24px 60px}
+  .intro{text-align:center;margin-bottom:30px}
+  .intro .kicker{display:inline-block;font-size:12px;letter-spacing:.22em;color:var(--sub);border:1px solid var(--hairline);padding:6px 14px;border-radius:999px;margin-bottom:16px;background:var(--surface)}
+  .intro h1{font-size:clamp(28px,3.6vw,40px);margin:0 0 12px;font-weight:800;letter-spacing:-.02em}
+  .intro p{color:var(--sub);font-size:15px;max-width:640px;margin:0 auto}
+  .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+  .card{background:var(--surface);border:1px solid var(--hairline);border-radius:var(--radius);padding:22px;box-shadow:0 6px 24px rgba(0,0,0,.04)}
+  .card h3{margin:0 0 10px;font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px}
+  .card p{margin:0;font-size:13.5px;color:rgba(60,60,67,.85);line-height:1.7}
+  .card .pill{font-size:11px;font-weight:700;padding:3px 9px;border-radius:8px;margin-left:auto}
+  .pill.ok{background:rgba(52,199,89,.14);color:#1d7a33}
+  .pill.soon{background:rgba(255,149,0,.14);color:#8A5C00}
+  .pill.note{background:var(--surface-2);color:var(--sub)}
+  .head-row{display:flex;align-items:center}
+  .warnbox{margin-top:22px;background:rgba(255,149,0,.08);border:1px solid rgba(255,149,0,.3);border-radius:14px;padding:16px 18px;font-size:13.5px;color:#8A5C00;line-height:1.7}
+  .warnbox b{color:#8A5C00}
+  .sec-title{font-size:20px;font-weight:800;margin:34px 0 14px}
+  .foot{text-align:center;color:var(--muted);font-size:12px;margin-top:40px;line-height:1.8}
+  .foot a{color:var(--sub)}
+  @media(max-width:880px){.grid{grid-template-columns:1fr}.topbar{padding:12px 16px}}
+</style>
+</head>
+<body id="top">
+<a class="skip" href="#main">跳到主要内容</a>
+<header class="topbar">
+  <div class="brand"><div class="logo">📚</div><div class="name">掌柜<span>智库</span></div></div>
+  <div class="right"><a class="back" href="/demo.html?v=">产品演示</a><a class="back" href="/login.html?v=">登录 →</a></div>
+</header>
+<main class="wrap" id="main">
+  <section class="intro">
+    <span class="kicker">SECURITY · 安全与合规</span>
+    <h1>你的数据，始终在你手里</h1>
+    <p>知识库往往装着企业最敏感的资料。我们把「数据自持」作为第一原则，并如实说明当前能力边界。</p>
+  </section>
+
+  <div class="grid">
+    <div class="card"><div class="head-row"><h3>🔒 数据自持</h3><span class="pill ok">已实现</span></div>
+      <p>私有化部署时，文档原文、向量库、会话历史全部保存在你自己的服务器（Milvus / MinIO / MongoDB），不经过第三方，可配置完全离线运行。</p></div>
+    <div class="card"><div class="head-row"><h3>🛡 传输与存储加密</h3><span class="pill ok">已实现</span></div>
+      <p>对外通信走 HTTPS；对象存储与向量库建议使用传输加密与静态加密；敏感配置（密钥、凭证）与环境变量隔离，不入库明文。</p></div>
+    <div class="card"><div class="head-row"><h3>👥 权限与租户隔离</h3><span class="pill soon">规划中</span></div>
+      <p>企业版规划：管理员 / 编辑 / 查看三级角色 + 知识库级访问控制；多租户检索强制带租户 ID 过滤，从底层杜绝跨租户检索泄露。</p></div>
+    <div class="card"><div class="head-row"><h3>📜 审计日志</h3><span class="pill soon">规划中</span></div>
+      <p>规划记录谁在何时访问 / 修改了哪份文档，满足企业合规与追溯需求；私有化部署可结合既有日志体系导出。</p></div>
+  </div>
+
+  <div class="warnbox">
+    <b>演示站安全提示（重要）：</b>当前线上为<b>公开共享的演示环境</b>，任意手机号即可登录，数据不保证隔离与持久化。
+    <b>请勿在演示站上传任何真实、涉密或个人隐私资料。</b>需要安全使用时，请部署私有化版本，并把 Milvus / MinIO / MongoDB 的默认账号密码改为强密码。
+  </div>
+
+  <h2 class="sec-title">隐私承诺</h2>
+  <div class="grid">
+    <div class="card"><h3>🚫 不上传第三方</h3><p>私有化部署模式下，你的文档不会发送给任何第三方大模型 API（除非你主动配置并授权对应的模型服务）。</p></div>
+    <div class="card"><h3>🧹 演示站不留存</h3><p>演示站仅用于体验交互，不持久化你上传的真实内容；会话为临时态，刷新 / 重开即清空。</p></div>
+    <div class="card"><h3>🔍 答案可追溯</h3><p>产品目标：每个回答都标注引用来源（文档 / 页码），并在检索不到时明确提示「未找到」，而非编造。</p></div>
+    <div class="card"><h3>⚙ 你掌握删除权</h3><p>私有化部署时，文档、向量、会话的删除与备份完全由你控制，可随时清理或迁移。</p></div>
+  </div>
+
+  <h2 class="sec-title">部署安全建议</h2>
+  <div class="grid">
+    <div class="card"><h3>🔑 改默认密码</h3><p>docker-compose 中的 Milvus / MinIO / MongoDB 默认账号密码务必改为强密码，避免裸奔暴露内网被接管。</p></div>
+    <div class="card"><h3>💾 备份策略</h3><p>定期备份 MinIO 原始文件、MongoDB 元数据与 Milvus 向量集合；etcd 为元数据关键组件，建议高可用部署并单独备份。</p></div>
+    <div class="card"><h3>📡 网络收敛</h3><p>向量库与数据库仅对内网开放，前端经反向代理暴露；不要将 Milvus / MongoDB 端口直接暴露在公网。</p></div>
+    <div class="card"><h3>📈 监控告警</h3><p>关注向量库内存占用（Milvus 建议 ≥16GB）与磁盘；小机器易 OOM，建议配置基础监控与告警。</p></div>
+  </div>
+
+  <div class="foot">
+    © 2026 掌柜智库 · 让每一次提问都有据可查<br/>
+    <a href="/pricing.html?v=">方案与定价</a> · <a href="/about.html?v=">关于与开源</a> · <a href="/login.html?v=">登录</a>
+  </div>
+</main>
+</body>
+</html>

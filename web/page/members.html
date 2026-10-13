@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>团队管理 · 掌柜智库</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: "Microsoft YaHei", "PingFang SC", sans-serif; background: #f0f2f5; padding: 22px; }
+    .head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+    .head h2 { color: #1a2a4a; font-size: 18px; }
+    .btn { border: none; cursor: pointer; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; }
+    .btn-blue { background: #0a84ff; color: #fff; }
+    .btn-blue:hover { background: #0069d9; }
+    .card { background: #fff; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,.06); overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { background: #f7f8fa; color: #555; text-align: left; padding: 11px 14px; font-weight: 600; }
+    td { padding: 11px 14px; border-top: 1px solid #f0f0f0; color: #333; vertical-align: middle; }
+    tr:hover td { background: #f8fbff; }
+    select, input.ti { padding: 6px 8px; border: 1px solid #d9dee6; border-radius: 8px; font-size: 12.5px; }
+    input.ti { width: 130px; }
+    .save { border: none; cursor: pointer; background: #e6f0ff; color: #0a84ff; padding: 5px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+    .save:hover { background: #d2e6ff; }
+    .save:disabled { opacity: .5; cursor: default; }
+    .role-tag { display: inline-block; padding: 2px 9px; border-radius: 12px; font-size: 11.5px; font-weight: 600; }
+    .r-admin { background: #e6f0ff; color: #0a84ff; }
+    .r-editor { background: #e6f7ee; color: #0a7a43; }
+    .r-viewer { background: #fff6e6; color: #b26a00; }
+    .empty { text-align: center; padding: 40px; color: #999; }
+    .meta { color: #888; font-size: 12px; margin-top: 6px; line-height: 1.7; }
+    .meta b { color: #0a7a43; }
+    .note { background: #fff8e6; border: 1px solid #ffe2a8; color: #7a5b00; border-radius: 10px; padding: 10px 14px; font-size: 12.5px; margin-bottom: 14px; line-height: 1.7; }
+    .me { color: #888; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="head">
+    <h2>👥 团队权限管理</h2>
+    <button class="btn btn-blue" onclick="load()">↻ 刷新</button>
+  </div>
+
+  <div class="note">
+    <b>角色权限</b>：管理员（admin）可管理成员、改角色/租户、导入与问答；编辑（editor）可导入与问答；查看（viewer）仅可问答。
+    当前为单租户（<b>default</b>）时所有成员共享同一知识库；启用多租户后按「租户」隔离检索数据（需先对历史集合执行 tenant_id 迁移脚本）。
+  </div>
+
+  <div class="card">
+    <table>
+      <thead>
+        <tr><th style="width:16%">手机号</th><th style="width:14%">昵称</th><th style="width:16%">角色</th><th style="width:18%">租户 ID</th><th style="width:14%">创建时间</th><th style="width:12%">操作</th></tr>
+      </thead>
+      <tbody id="tbody"><tr><td colspan="6" class="empty">加载中…</td></tr></tbody>
+    </table>
+  </div>
+  <p class="meta">仅管理员可见本页 · 当前用户：<b id="who">…</b><span class="me" id="roleMe"></span></p>
+
+<script>
+const $ = id => document.getElementById(id);
+const ROLES = ['admin', 'editor', 'viewer'];
+
+function escapeHtml(t) { return String(t).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+async function api(path, opts) {
+  const tk = localStorage.getItem('kb_token') || '';
+  const r = await fetch(path, Object.assign({ headers: { Authorization: 'Bearer ' + tk, 'X-Auth-Token': tk } }, opts || {}));
+  let j = null; try { j = await r.json(); } catch (e) { j = {}; }
+  return { status: r.status, j };
+}
+
+async function load() {
+  const me = await api('/api/auth/me');
+  if (!me.j.ok) { $('tbody').innerHTML = '<tr><td colspan="6" class="empty">未登录</td></tr>'; return; }
+  $('who').textContent = me.j.user.nickname + '（' + (me.j.user.phone || '') + '）';
+  $('roleMe').textContent = ' · 角色：' + (me.j.user.role || 'admin');
+
+  const res = await api('/api/admin/users');
+  if (!res.j.ok) {
+    const msg = res.status === 403 ? '仅管理员可访问团队管理' : (res.j.message || '加载失败');
+    $('tbody').innerHTML = '<tr><td colspan="6" class="empty">' + escapeHtml(msg) + '</td></tr>';
+    return;
+  }
+  const users = res.j.users || [];
+  if (!users.length) { $('tbody').innerHTML = '<tr><td colspan="6" class="empty">暂无成员</td></tr>'; return; }
+  $('tbody').innerHTML = users.map(u => {
+    const role = u.role || 'admin';
+    const sel = '<select data-uid="' + u.user_id + '" class="rsel">' +
+      ROLES.map(r => '<option value="' + r + '"' + (r === role ? ' selected' : '') + '>' + r + '</option>').join('') + '</select>';
+    const ti = '<input class="ti" data-uid="' + u.user_id + '" value="' + escapeHtml(u.tenant_id || 'default') + '">';
+    return '<tr>' +
+      '<td>' + escapeHtml(u.phone || '') + '</td>' +
+      '<td>' + escapeHtml(u.nickname || '') + '</td>' +
+      '<td>' + sel + '</td>' +
+      '<td>' + ti + '</td>' +
+      '<td>' + escapeHtml(u.created_at || '') + '</td>' +
+      '<td><button class="save" data-uid="' + u.user_id + '">保存</button></td>' +
+      '</tr>';
+  }).join('');
+
+  document.querySelectorAll('.save').forEach(btn => btn.addEventListener('click', () => save(btn)));
+}
+
+async function save(btn) {
+  const uid = btn.getAttribute('data-uid');
+  const role = document.querySelector('.rsel[data-uid="' + uid + '"]').value;
+  const tenant = document.querySelector('.ti[data-uid="' + uid + '"]').value.trim() || 'default';
+  btn.disabled = true; btn.textContent = '保存中…';
+  try {
+    const r1 = await api('/api/admin/users/' + uid + '/role', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ role }) });
+    const r2 = await api('/api/admin/users/' + uid + '/tenant', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tenant_id: tenant }) });
+    if (r1.j.ok && r2.j.ok) { alert('已保存：角色=' + role + '，租户=' + tenant); }
+    else { alert((r1.j.message || '') + ' ' + (r2.j.message || '')); }
+  } catch (e) { alert('保存失败：网络异常'); }
+  btn.disabled = false; btn.textContent = '保存';
+  load();
+}
+
+load();
+</script>
+</body>
+</html>
