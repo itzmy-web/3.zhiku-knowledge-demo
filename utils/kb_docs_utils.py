@@ -1,6 +1,6 @@
 # utils/kb_docs_utils.py
 # -*- coding: utf-8 -*-
-"""掌柜智库 · 文档管理模块
+"""汇思智藏 · 文档管理模块
 
 kb_documents 集合：记录每次导入的文档（按用户隔离）
 - record_document：上传时登记（status=processing）

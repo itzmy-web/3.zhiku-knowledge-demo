@@ -1,6 +1,6 @@
 # utils/backup_utils.py
 # -*- coding: utf-8 -*-
-"""掌柜智库 · 备份与恢复工具（管理员专属接口调用 / 命令行两用）
+"""汇思智藏 · 备份与恢复工具（管理员专属接口调用 / 命令行两用）
 
 备份内容（全量落盘到 ./backups/<时间戳>_<标签>/）：
   1. MongoDB：所有核心集合导出为 JSON（bson.json_util 保留 ObjectId / 时间类型）
@@ -264,7 +264,7 @@ def restore_from(backup_dir: str, components: list = None) -> dict:
 
 # ============ 命令行入口 ============
 def _cli():
-    ap = argparse.ArgumentParser(description="掌柜智库 备份/恢复工具")
+    ap = argparse.ArgumentParser(description="汇思智藏 备份/恢复工具")
     ap.add_argument("--backup", action="store_true", help="执行备份")
     ap.add_argument("--label", default="", help="备份标签")
     ap.add_argument("--list", action="store_true", help="列举已有备份")

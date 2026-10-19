@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""掌柜智库 · 一体化服务（导入 + 对话 合并到 8000 端口）
+"""汇思智藏 · 一体化服务（导入 + 对话 合并到 8000 端口）
 
 访问地址：
   http://127.0.0.1:8000/            → 导航首页（标签页切换 导入/对话）
@@ -33,7 +33,7 @@ from web.api.query_service import app as query_app
 
 # ============ 合并两个应用 ============
 app = FastAPI(
-    title="掌柜智库-一体化服务",
+    title="汇思智藏-一体化服务",
     description="导入流程 + 查询流程 合并版（端口 8000）"
 )
 
@@ -1296,5 +1296,5 @@ if __name__ == "__main__":
         time.sleep(2)
         webbrowser.open("http://127.0.0.1:8000/login.html")
     threading.Thread(target=_open_browser, daemon=True).start()
-    print("掌柜智库一体化服务启动中: http://127.0.0.1:8000/")
+    print("汇思智藏一体化服务启动中: http://127.0.0.1:8000/")
     uvicorn.run(app, host="127.0.0.1", port=8000)

@@ -21,8 +21,8 @@ from utils.task_utils import update_task_status, TASK_STATUS_PROCESSING, get_tas
 from tool.logger import logger
 # 1. 创建应用
 app = FastAPI(
-    title="掌柜智库-查询API",
-    description="此文档是掌柜智库查询流程的API接口说明"
+    title="汇思智藏-查询API",
+    description="此文档是汇思智藏查询流程的API接口说明"
 )
 
 # 2. 跨域

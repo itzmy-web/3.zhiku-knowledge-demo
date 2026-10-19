@@ -1,6 +1,6 @@
 # utils/ratelimit_utils.py
 # -*- coding: utf-8 -*-
-"""掌柜智库 · 开放 API 限流（/v1/chat、/v1/bot/webhook 共用）
+"""汇思智藏 · 开放 API 限流（/v1/chat、/v1/bot/webhook 共用）
 
 设计要点：
 - 按 api_key 维度滑动窗口限流；api_key 缺失时回退到 IP，防止裸调爆破。

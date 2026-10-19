@@ -24,8 +24,8 @@ from utils.task_utils import update_task_status, add_done_task, add_running_task
 # 1. 创建应用
 # 标题和描述会在Swagger文档中展示
 app = FastAPI(
-    title="BOSS智库-导入API",
-    description="此文档是BOSS智库导入流程的API接口说明"
+    title="汇思智藏-导入API",
+    description="此文档是汇思智藏导入流程的API接口说明"
 )
 
 # 2. 跨域
@@ -309,7 +309,7 @@ async def import_progress_sse(task_id: str):
 
 if __name__ == "__main__":
     """服务启动入口：本地开发环境直接运行"""
-    logger.info("BOSS智库服务启动中...")
+    logger.info("汇思智藏服务启动中...")
     # 启动uvicorn服务，绑定本地IP和8000端口，关闭自动重载（生产环境建议用workers多进程）
     uvicorn.run(
         app=app,

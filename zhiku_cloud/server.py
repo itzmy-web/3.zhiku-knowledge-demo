@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""掌柜智库 · 云端轻量版（掌柜智库界面 + 魔珐星云数字人）
+"""汇思智藏 · 云端轻量版（汇思智藏界面 + 魔珐星云数字人）
 
 说明：
 - 云端沙箱没有 MongoDB / Milvus / BGE 模型，知识库导入与 RAG 问答需在本地跑完整版
@@ -29,7 +29,7 @@ BASE = Path(__file__).absolute().parent
 PAGE = BASE / "page"
 PAGES = {"login.html", "index.html", "chat.html", "import.html", "dh.html"}
 
-app = FastAPI(title="掌柜智库-云端版")
+app = FastAPI(title="汇思智藏-云端版")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -134,7 +134,7 @@ async def robots_txt():
     body = (
         "User-agent: *\n"
         "Allow: /\n"
-        "# 掌柜智库云端演示站：登录页 / 产品演示页 / 工作台外壳均可被索引\n"
+        "# 汇思智藏云端演示站：登录页 / 产品演示页 / 工作台外壳均可被索引\n"
     )
     return Response(body, media_type="text/plain; charset=utf-8")
 

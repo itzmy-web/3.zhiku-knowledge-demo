@@ -1,6 +1,6 @@
 # utils/migrate_tenant_id.py
 """
-掌柜智库 · 租户字段迁移脚本
+汇思智藏 · 租户字段迁移脚本
 
 作用：给已有的 Milvus 集合（默认 kb_chunks）补上 `tenant_id` 字段。
 - 新集合在建表时已由 node_import_milvus 自动带 `tenant_id`（默认 "default"），无需本脚本。

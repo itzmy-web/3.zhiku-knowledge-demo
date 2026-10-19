@@ -1,4 +1,4 @@
-# 掌柜智库 · 部署与运维文档（DEPLOY）
+# 汇思智藏 · 部署与运维文档（DEPLOY）
 
 > 适用对象：自托管 / 私有化部署。云端演示站（`zhiku-knowledge-base.app.workbuddy.host`）为公开共享环境，**请勿上传真实或涉密资料**。
 > 本文涵盖：架构、依赖、外部服务启停、`.env` 全量配置、启动、四大运维能力（限流 / 监控 / 备份恢复）、安全加固、常见运维命令。
@@ -9,7 +9,7 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  掌柜智库（FastAPI 单端口 8000，web/api/kb_service.py）        │
+│  汇思智藏（FastAPI 单端口 8000，web/api/kb_service.py）        │
 │   前端页面（web/page/*.html） + 后端 API（导入/问答/管理）      │
 └───────┬───────────────┬────────────────┬───────────────────┘
         │               │                │
@@ -45,7 +45,7 @@
 ## 3. 安装依赖
 
 ```bash
-cd rag智能智库
+cd 汇思智藏
 python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 # 或用 uv：

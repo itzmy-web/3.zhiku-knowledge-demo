@@ -1,4 +1,4 @@
-<!--&lt;!&ndash;BOSS智库知识库&ndash;&gt; http://127.0.0.1:8001/chat.html-->
+<!--&lt;!&ndash;汇思智藏&ndash;&gt; http://127.0.0.1:8001/chat.html-->
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -10,7 +10,7 @@
   location.replace('/login.html');
 }catch(e){}})();</script>
   <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-  <title>BOSS智库知识库</title>
+  <title>汇思智藏</title>
   <style>
     :root{
       --bg:#f3f5f7;
@@ -544,7 +544,7 @@
       <div class="brand">
         <div class="logo"></div>
         <div class="title">
-          <strong>BOSS智库知识库</strong>
+          <strong>汇思智藏</strong>
           <span id="subTitle">在线 · 可查询知识库与联网信息</span>
         </div>
       </div>
@@ -579,9 +579,9 @@
     <div class="chat" id="chat">
       <div class="dayline">今天</div>
       <div class="msg bot">
-        <div class="avatar bot">BOSS智库</div>
+        <div class="avatar bot">汇思智藏</div>
         <div>
-          <div class="bubble">你好，我是BOSS智库知识库客服。你可以直接提问，我会在“阶段进度”里展示处理过程。</div>
+          <div class="bubble">你好，我是汇思智藏客服。你可以直接提问，我会在“阶段进度”里展示处理过程。</div>
           <div class="meta">提示：可以问“如何使用万用表测量电压？”</div>
         </div>
       </div>
@@ -1039,7 +1039,7 @@
       const id = 'bot-his-' + Math.random().toString(36).slice(2);
       const html = `
         <div class="msg bot" id="${id}">
-          <div class="avatar bot">BOSS智库</div>
+          <div class="avatar bot">汇思智藏</div>
           <div>
             <div class="bubble"><div class="answer"></div></div>
             <div class="meta">${formatTime(ts)}</div>
@@ -1059,7 +1059,7 @@
       const id = 'bot-' + Math.random().toString(36).slice(2);
       const html = `
         <div class="msg bot" id="${id}">
-          <div class="avatar bot">BOSS智库</div>
+          <div class="avatar bot">汇思智藏</div>
           <div style="min-width: 180px;">
             <div class="bubble">
               <span class="typing"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
@@ -1304,7 +1304,7 @@
       ctx.fillRect(0, 0, W, headH);
       ctx.fillStyle = '#fff';
       ctx.font = 'bold 24px "Microsoft YaHei", sans-serif';
-      ctx.fillText('BOSS智库知识库', PAD, 44);
+      ctx.fillText('汇思智藏', PAD, 44);
       ctx.font = '13px "Microsoft YaHei", sans-serif';
       ctx.fillStyle = 'rgba(255,255,255,.85)';
       ctx.fillText('RAG 智能问答 · 有据可查', PAD, 70);
@@ -1335,12 +1335,12 @@
       ctx.fillStyle = '#98a3b0';
       ctx.font = '12px "Microsoft YaHei", sans-serif';
       const now = new Date();
-      ctx.fillText('由掌柜智库 RAG 生成 · ' + now.toLocaleString('zh-CN'), PAD, H - 26);
+      ctx.fillText('由汇思智藏 RAG 生成 · ' + now.toLocaleString('zh-CN'), PAD, H - 26);
 
       canvas.toBlob(function(blob){
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = 'boss智库分享卡片.png';
+        a.download = '汇思智藏分享卡片.png';
         a.click();
         setTimeout(function(){ URL.revokeObjectURL(a.href); }, 2000);
       }, 'image/png');
@@ -1477,21 +1477,21 @@
         if(!text) continue;
         const time = (m.querySelector('.meta') || {}).textContent || '';
         rows += `<div style="margin:14px 0">
-          <p style="color:#888888;font-size:11px;margin:0 0 4px">${isUser ? '👤 用户' : '🤖 BOSS智库'} · ${escapeHtml(time)}</p>
+          <p style="color:#888888;font-size:11px;margin:0 0 4px">${isUser ? '👤 用户' : '🤖 汇思智藏'} · ${escapeHtml(time)}</p>
           <p style="white-space:pre-wrap;line-height:1.7;font-size:12pt">${escapeHtml(text)}</p>
         </div>`;
       }
       const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word">
-<head><meta charset="utf-8"><title>掌柜智库问答报告</title></head>
+<head><meta charset="utf-8"><title>汇思智藏问答报告</title></head>
 <body style="font-family:'Microsoft YaHei',sans-serif">
-  <h2 style="text-align:center;color:#1a2a4a">掌柜智库 · 问答报告</h2>
-  <p style="text-align:center;color:#888888;font-size:10pt">生成时间：${new Date().toLocaleString('zh-CN')} · 由掌柜智库 RAG 生成 · 答案附引用来源</p>
+  <h2 style="text-align:center;color:#1a2a4a">汇思智藏 · 问答报告</h2>
+  <p style="text-align:center;color:#888888;font-size:10pt">生成时间：${new Date().toLocaleString('zh-CN')} · 由汇思智藏 RAG 生成 · 答案附引用来源</p>
   <hr>${rows}
 </body></html>`;
       const blob = new Blob(['\ufeff' + html], {type: 'application/msword'});
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = `掌柜智库问答报告_${new Date().toISOString().slice(0,10)}.doc`;
+      a.download = `汇思智藏问答报告_${new Date().toISOString().slice(0,10)}.doc`;
       a.click();
       setTimeout(() => URL.revokeObjectURL(a.href), 2000);
     });

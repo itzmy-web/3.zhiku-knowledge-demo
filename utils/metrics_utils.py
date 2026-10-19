@@ -1,6 +1,6 @@
 # utils/metrics_utils.py
 # -*- coding: utf-8 -*-
-"""掌柜智库 · 系统监控指标采集（管理员专属 /api/admin/metrics）
+"""汇思智藏 · 系统监控指标采集（管理员专属 /api/admin/metrics）
 
 采集内容：
 - 运行时长（进程 uptime）
